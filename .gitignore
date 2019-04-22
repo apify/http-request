@@ -1,0 +1,16 @@
+build
+build-docs
+node_modules
+*.log
+*.pid
+*.seed
+.DS_Store
+lib
+coverage
+.nyc_output
+logs
+pids
+.idea
+yarn.lock
+package-lock.json
+tmp
