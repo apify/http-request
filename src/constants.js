@@ -9,6 +9,7 @@ const REQUEST_DEFAULT_OPTIONS = {
     ignoreSslErrors: false,
     decodeBody: true,
     parseBody: true,
+    stream: false,
 
 };
 

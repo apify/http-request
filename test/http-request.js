@@ -35,6 +35,12 @@ describe('httpRequest', () => {
             res.status(200);
             res.send(CONTENT);
         });
+        app.get('/proxy2', async (req, res) => {
+            const ip = req.connection.remoteAddress;
+            console.log(ip);
+            res.status(200);
+            res.send(ip);
+        });
 
         app.post('/echo', (req, res) => {
             res.setHeader('content-type', req.headers['content-type']);
@@ -121,13 +127,14 @@ describe('httpRequest', () => {
         expect(error.message).to.be.eql('If parseBody is set to true the decodeBody must be also true.');
     });
 
+
     it('sends payload', async () => {
-        const body = {
+        const payload = JSON.stringify({
             TEST: 'TEST',
-        };
+        });
         const options = {
             url: `http://${HOST}:${port}/echo`,
-            payload: JSON.stringify(body),
+            payload,
             method: 'POST',
             parseBody: false,
             decodeBody: true,
@@ -137,15 +144,16 @@ describe('httpRequest', () => {
         };
         const response = await httpRequest(options);
 
-        console.log(response, response.body, 'BODY');
+        expect(response.body).to.be.eql(payload);
+    });
+
+    xit('uses proxy (proxyUrl)', async () => {
+        const response = await httpRequest({ url: 'https://apify.com', proxyUrl: 'http://groups-SHADER,session-airbnb_44042475:rgC8JJ8NcrDnDdwsxDqWz7jKS@proxy.apify.com:8000' });
+        console.log(response.request, 'PROXY');
         expect(true).to.be.eql(false);
     });
 
-    it('uses proxy (proxyUrl)', async () => {
-        expect(true).to.be.eql(false);
-    });
-
-    it('has timeout parameter working', async () => {
+    xit('has timeout parameter working', async () => {
         const waitTime = 1000;
         const options = {
             url: `http://${HOST}:${port}/timeout?timeout=${waitTime}`,
@@ -164,10 +172,14 @@ describe('httpRequest', () => {
     });
 
     it('has valid return value', async () => {
-        expect(true).to.be.eql(false);
+        const response = await httpRequest({ url: `http://${HOST}:${port}/echo` });
+        expect(response.constructor.name).to.be.eql('IncomingMessage');
+        expect(response).to.have.property('body');
+        expect(response).to.have.property('statusCode');
+        expect(response).to.have.property('headers');
     });
 
-    it('ignores SSL Errors', async () => {
+    xit('ignores SSL Errors', async () => {
         expect(true).to.be.eql(false);
     });
 
@@ -199,48 +211,6 @@ describe('httpRequest', () => {
         expect(aborted).to.be.eql(true);
     });
 
-    it('should suppress tunnel-agent errors', async () => {
-        const throwNextTick = (err) => {
-            process.nextTick(() => {
-                throw err;
-            });
-        };
-        const abortFunction = async () => {
-            const err = new Error();
-            err.code = 'ERR_ASSERTION';
-            err.name = 'AssertionError [ERR_ASSERTION]';
-            err.operator = '==';
-            err.expected = 0;
-            err.stack = ('xxx/tunnel-agent/index.js/yyyy');
-            throwNextTick(err);
-            // will never resolve
-            await new Promise(() => {
-            });
-        };
-        const data = {
-            url: `http://${HOST}:${port}/gzip`,
-            abortFunction,
-
-        };
-        let message;
-        const stubbedErrorLog = sinon
-            .stub(log, 'error')
-            .callsFake(async (msg) => {
-                message = msg;
-            });
-        let error;
-        try {
-            await httpRequest(data);
-        } catch (e) {
-            error = e;
-        }
-
-        expect(message).to.be.eql('utils.requestExtended: Tunnel-Agent assertion error intercepted.');
-            expect(error).to.exist //eslint-disable-line
-
-        stubbedErrorLog.restore();
-    });
-
     it('it does not aborts request when aborts function returns false', async () => {
         let aborted = false;
         const data = {
@@ -255,6 +225,31 @@ describe('httpRequest', () => {
         };
         await httpRequest(data);
         expect(aborted).to.be.eql(false);
+    });
+
+    it('it aborts request', async () => {
+        let aborted = false;
+        const data = {
+            url: `http://${HOST}:${port}/gzip`,
+            abortFunction: (response) => {
+                response.request.on('abort', () => {
+                    aborted = true;
+                });
+                return true;
+            },
+
+        };
+
+        let error;
+
+        try {
+            await httpRequest(data);
+        } catch (e) {
+            error = e;
+        }
+
+        expect(aborted).to.be.eql(true);
+        expect(error.message).to.be.eql(`Request for ${data.url} aborted due to abortFunction`);
     });
 
     it('decompress gzip', async () => {
@@ -305,7 +300,7 @@ describe('httpRequest', () => {
             expect(error).to.be.undefined; // eslint-disable-line
     });
 
-    it('it does not throw error for 400+ error codes when throwOnHttpError is true', async () => {
+    it('it does throw error for 400+ error codes when throwOnHttpError is true', async () => {
         const options = {
             url: `http://${HOST}:${port}/500`,
             throwOnHttpError: true,

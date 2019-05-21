@@ -1,11 +1,11 @@
-const rqst = require('request');
+const got = require('request');
 const contentType = require('content-type');
 const util = require('util');
 const zlib = require('zlib');
 const { decompressStream } = require('iltorb');
 const _ = require('underscore');
+const ProxyAgent = require('proxy-agent');
 
-const suppressTunnelAgentAssertError = require('./supress_tunnel_agent_assert_error');
 const { REQUEST_DEFAULT_OPTIONS, TRUNCATED_ERROR_CHARS } = require('./constants');
 
 class RequestError extends Error {
@@ -15,18 +15,7 @@ class RequestError extends Error {
         this.statusCode = statusCode;
     }
 }
-let tunnelAgentExceptionListener;
 
-/**
- * Gets more info about the error.
- * Errors are often sent as JSON, so attempt to parse them, despite Accept header being set to something different.
- * @param {http.IncomingMessage} response
- * @param {Object} cType
- * @param {String} cType.type
- * @param {String} cType.encoding
- * @returns {Promise<Error>}
- * @ignore
- */
 async function getMoreErrorInfo(response, cType) {
     const { type, encoding } = cType;
     const { status } = response;
@@ -57,7 +46,7 @@ async function getMoreErrorInfo(response, cType) {
         return new Error(`${status} - ${message}`);
     }
     // It's not a JSON so it's probably some text. Get the first 100 chars of it.
-    return new Error(`utils.requestBetter: ${status} - Internal Server Error: ${body.substr(0, TRUNCATED_ERROR_CHARS)}...`);
+    return new RequestError(` ${status} - Internal Server Error: ${body.substr(0, TRUNCATED_ERROR_CHARS)}...`, response, status);
 }
 
 /**
@@ -110,7 +99,11 @@ function decompress(response) {
         case undefined:
             break;
         default:
-            throw new Error(`requestBetter: Invalid Content-Encoding header. Expected gzip, deflate or br, but received: ${compression}`);
+            throw new RequestError(
+                `Invalid Content-Encoding header. Expected gzip, deflate or br, but received: ${compression}`,
+                response,
+                response.status,
+            );
         }
         stream = response.pipe(decompressor);
     }
@@ -166,107 +159,103 @@ function decompress(response) {
  *  If set to true decoded body is returned. Cannot be set to false if the [options.parsedBody] is true
  * @param [options.parsedBody=true]
  *  If set to true parsed body is returned
+ * @param [options.stream=false]
+ *  If set to true parsed body is returned
  * @return {http.IncomingMessage}
  * @name httpRequest
  */
 module.exports = async (options) => {
-    tunnelAgentExceptionListener = suppressTunnelAgentAssertError(tunnelAgentExceptionListener);
-    let result;
-    try {
-        result = await new Promise((resolve, reject) => {
-            const opts = _.defaults({}, options, REQUEST_DEFAULT_OPTIONS);
+    const opts = _.defaults({}, options, REQUEST_DEFAULT_OPTIONS);
 
-            const {
-                url,
-                method,
-                headers,
-                followRedirect,
-                maxRedirects,
-                throwOnHttpError,
-                abortFunction,
-                timeoutSecs,
-                ignoreSslErrors,
-                decodeBody,
-                parseBody,
-                proxyUrl,
-                payload,
-            } = opts;
+    const {
+        url,
+        method,
+        headers,
+        followRedirect,
+        maxRedirects,
+        throwOnHttpError,
+        abortFunction,
+        timeoutSecs,
+        ignoreSslErrors,
+        decodeBody,
+        parseBody,
+        proxyUrl,
+        payload,
+        stream,
+    } = opts;
 
-            if (parseBody && !decodeBody) {
-                throw new Error('If parseBody is set to true the decodeBody must be also true.');
-            }
+    const requestOptions = {
+        url,
+        method,
+        headers,
+        followRedirect,
+        maxRedirects,
+        timeout: timeoutSecs * 1000,
+        rejectUnauthorized: ignoreSslErrors,
+        body: payload,
+    };
 
-
-            const requestOptions = {
-                url,
-                method: method.toLowerCase(),
-                headers,
-                followRedirect,
-                maxRedirects,
-                timeout: timeoutSecs * 1000,
-                proxy: proxyUrl,
-                strictSSL: !ignoreSslErrors,
-                body: payload,
-            };
-            console.log(headers, 'HEADERS');
-
-            // Using the streaming API of Request to be able to
-            const request = rqst(requestOptions);
-            request
-                .on('error', err => reject(err))
-                .on('response', async (res) => {
-                    let shouldAbort;
-
-                    try {
-                        shouldAbort = abortFunction && abortFunction(res);
-                    } catch (e) {
-                        reject(e);
-                    }
-
-                    if (shouldAbort) {
-                        request.abort();
-                        res.destroy();
-
-                        return reject(new RequestError(`Request for ${url} aborted due to abortFunction`));
-                    }
-
-                    let cType;
-                    try {
-                        cType = contentType.parse(res);
-                    } catch (err) {
-                        res.destroy();
-                        // No reason to parse the body if the Content-Type header is invalid.
-                        console.log(err, res.headers);
-                        return reject(new RequestError(`Invalid Content-Type header for URL: ${url}, ${err}`));
-                    }
-
-                    const { encoding } = cType;
-
-                    // 5XX and 4XX codes are handled as errors, requests will be retried.
-                    const status = res.statusCode;
-
-                    if (status >= 400 && throwOnHttpError) {
-                        const error = await getMoreErrorInfo(res, cType);
-                        return reject(error);
-                    }
-
-                    // Content-Type is fine. Read the body and respond.
-                    try {
-                        res.body = await readStreamIntoString(res, encoding);
-                        resolve(res);
-                    } catch (err) {
-                        // Error in reading the body.
-                        reject(err);
-                    }
-                });
-        });
-        process.removeListener('uncaughtException', tunnelAgentExceptionListener);
-        tunnelAgentExceptionListener = null;
-    } catch (e) {
-        process.removeListener('uncaughtException', tunnelAgentExceptionListener);
-        tunnelAgentExceptionListener = null;
-        throw e;
+    if (parseBody && !decodeBody) {
+        throw new Error('If parseBody is set to true the decodeBody must be also true.');
     }
 
-    return result;
+    if (proxyUrl) {
+        const agent = new ProxyAgent(proxyUrl);
+
+        requestOptions.agent = agent;
+    }
+
+    if (stream) {
+        return got.stream(requestOptions);
+    }
+
+
+    return new Promise((resolve, reject) => {
+        const requestStream = got(requestOptions)
+            .on('error', err => reject(err))
+            .on('response', async (res) => {
+                let shouldAbort;
+
+                try {
+                    shouldAbort = abortFunction && abortFunction(res);
+                } catch (e) {
+                    reject(e);
+                }
+
+                if (shouldAbort) {
+                    requestStream.abort();
+                    res.destroy();
+
+                    return reject(new RequestError(`Request for ${url} aborted due to abortFunction`), res, res.status);
+                }
+
+                let cType;
+                try {
+                    cType = contentType.parse(res);
+                } catch (err) {
+                    res.destroy();
+                    // No reason to parse the body if the Content-Type header is invalid.
+                    return reject(new RequestError(`Invalid Content-Type header for URL: ${url}, ${err}`), res, res.status);
+                }
+
+                const { encoding } = cType;
+
+                // 5XX and 4XX codes are handled as errors, requests will be retried.
+                const status = res.statusCode;
+
+                if (status >= 400 && throwOnHttpError) {
+                    const error = await getMoreErrorInfo(res, cType);
+                    return reject(error);
+                }
+
+                // Content-Type is fine. Read the body and respond.
+                try {
+                    res.body = await readStreamIntoString(res, encoding);
+                    resolve(res);
+                } catch (err) {
+                    // Error in reading the body.
+                    reject(err);
+                }
+            });
+    });
 };
