@@ -8,7 +8,13 @@ const _ = require('underscore');
 const suppressTunnelAgentAssertError = require('./supress_tunnel_agent_assert_error');
 const { REQUEST_DEFAULT_OPTIONS, TRUNCATED_ERROR_CHARS } = require('./constants');
 
-
+class RequestError extends Error {
+    constructor(message, response, statusCode) {
+        super(message);
+        this.response = response;
+        this.statusCode = statusCode;
+    }
+}
 let tunnelAgentExceptionListener;
 
 /**
@@ -164,64 +170,103 @@ function decompress(response) {
  * @name httpRequest
  */
 module.exports = async (options) => {
-    suppressTunnelAgentAssertError(tunnelAgentExceptionListener);
+    tunnelAgentExceptionListener = suppressTunnelAgentAssertError(tunnelAgentExceptionListener);
+    let result;
+    try {
+        result = await new Promise((resolve, reject) => {
+            const opts = _.defaults({}, options, REQUEST_DEFAULT_OPTIONS);
 
-    return new Promise((resolve, reject) => {
-        const opts = _.defaults({}, options, REQUEST_DEFAULT_OPTIONS);
+            const {
+                url,
+                method,
+                headers,
+                followRedirect,
+                maxRedirects,
+                throwOnHttpError,
+                abortFunction,
+                timeoutSecs,
+                ignoreSslErrors,
+                decodeBody,
+                parseBody,
+                proxyUrl,
+                payload,
+            } = opts;
 
-        const {
-            abortFunction,
-            throwOnHttpError,
-        } = opts;
-        const method = opts.method.toLowerCase();
+            if (parseBody && !decodeBody) {
+                throw new Error('If parseBody is set to true the decodeBody must be also true.');
+            }
 
-        // Using the streaming API of Request to be able to
-        const request = rqst[method](opts);
-        request
-            .on('error', err => reject(err))
-            .on('response', async (res) => {
-                let shouldAbort;
 
-                try {
-                    shouldAbort = abortFunction(res);
-                } catch (e) {
-                    reject(e);
-                }
+            const requestOptions = {
+                url,
+                method: method.toLowerCase(),
+                headers,
+                followRedirect,
+                maxRedirects,
+                timeout: timeoutSecs * 1000,
+                proxy: proxyUrl,
+                strictSSL: !ignoreSslErrors,
+                body: payload,
+            };
+            console.log(headers, 'HEADERS');
 
-                if (shouldAbort) {
-                    request.abort();
-                    res.destroy();
+            // Using the streaming API of Request to be able to
+            const request = rqst(requestOptions);
+            request
+                .on('error', err => reject(err))
+                .on('response', async (res) => {
+                    let shouldAbort;
 
-                    return reject(new Error(`utils.requestBetter: Request for ${opts.url} aborted due to abortFunction`));
-                }
+                    try {
+                        shouldAbort = abortFunction && abortFunction(res);
+                    } catch (e) {
+                        reject(e);
+                    }
 
-                let cType;
-                try {
-                    cType = contentType.parse(res);
-                } catch (err) {
-                    res.destroy();
-                    // No reason to parse the body if the Content-Type header is invalid.
-                    return reject(new Error(`utils.requestBetter: Invalid Content-Type header for URL: ${request.url}`));
-                }
+                    if (shouldAbort) {
+                        request.abort();
+                        res.destroy();
 
-                const { encoding } = cType;
+                        return reject(new RequestError(`Request for ${url} aborted due to abortFunction`));
+                    }
 
-                // 5XX and 4XX codes are handled as errors, requests will be retried.
-                const status = res.statusCode;
+                    let cType;
+                    try {
+                        cType = contentType.parse(res);
+                    } catch (err) {
+                        res.destroy();
+                        // No reason to parse the body if the Content-Type header is invalid.
+                        console.log(err, res.headers);
+                        return reject(new RequestError(`Invalid Content-Type header for URL: ${url}, ${err}`));
+                    }
 
-                if (status >= 400 && throwOnHttpError) {
-                    const error = await getMoreErrorInfo(res, cType);
-                    return reject(error);
-                }
+                    const { encoding } = cType;
 
-                // Content-Type is fine. Read the body and respond.
-                try {
-                    res.body = await readStreamIntoString(res, encoding);
-                    resolve(res);
-                } catch (err) {
-                    // Error in reading the body.
-                    reject(err);
-                }
-            });
-    });
+                    // 5XX and 4XX codes are handled as errors, requests will be retried.
+                    const status = res.statusCode;
+
+                    if (status >= 400 && throwOnHttpError) {
+                        const error = await getMoreErrorInfo(res, cType);
+                        return reject(error);
+                    }
+
+                    // Content-Type is fine. Read the body and respond.
+                    try {
+                        res.body = await readStreamIntoString(res, encoding);
+                        resolve(res);
+                    } catch (err) {
+                        // Error in reading the body.
+                        reject(err);
+                    }
+                });
+        });
+        process.removeListener('uncaughtException', tunnelAgentExceptionListener);
+        tunnelAgentExceptionListener = null;
+    } catch (e) {
+        process.removeListener('uncaughtException', tunnelAgentExceptionListener);
+        tunnelAgentExceptionListener = null;
+        throw e;
+    }
+
+    return result;
 };
