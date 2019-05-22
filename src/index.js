@@ -1,114 +1,10 @@
-const got = require('request');
-const contentType = require('content-type');
-const util = require('util');
-const zlib = require('zlib');
-const { decompressStream } = require('iltorb');
+const got = require('got');
 const _ = require('underscore');
 const ProxyAgent = require('proxy-agent');
 
-const { REQUEST_DEFAULT_OPTIONS, TRUNCATED_ERROR_CHARS } = require('./constants');
-
-class RequestError extends Error {
-    constructor(message, response, statusCode) {
-        super(message);
-        this.response = response;
-        this.statusCode = statusCode;
-    }
-}
-
-async function getMoreErrorInfo(response, cType) {
-    const { type, encoding } = cType;
-    const { status } = response;
-    let body;
-    try {
-        body = await readStreamIntoString(response, encoding);
-    } catch (err) {
-        // Error in reading the body.
-        return err;
-    }
-
-    if (type === 'application/json') {
-        let errorResponse;
-        let message;
-        try {
-            errorResponse = JSON.parse(body);
-            message = errorResponse.message; // eslint-disable-line
-            if (!message) {
-                message = util.inspect(errorResponse, {
-                    depth: 1,
-                    maxArrayLength: 10,
-                });
-            }
-        } catch (e) {
-            message = `${body.substr(0, TRUNCATED_ERROR_CHARS)}...`;
-        }
-
-        return new Error(`${status} - ${message}`);
-    }
-    // It's not a JSON so it's probably some text. Get the first 100 chars of it.
-    return new RequestError(` ${status} - Internal Server Error: ${body.substr(0, TRUNCATED_ERROR_CHARS)}...`, response, status);
-}
-
-/**
- * Flushes the provided stream into a Buffer and transforms
- * it to a String using the provided encoding or utf-8 as default.
- *
- *
- * @param {http.IncomingMessage} response
- * @param {String} [encoding]
- * @returns {Promise<String>}
- * @ignore
- */
-async function readStreamIntoString(response, encoding) { // eslint-disable-line class-methods-use-this
-    const stream = decompress(response);
-
-    return new Promise((resolve, reject) => {
-        const chunks = [];
-        stream
-            .on('data', chunk => chunks.push(chunk))
-            .on('error', err => reject(err))
-            .on('end', () => {
-                const buffer = Buffer.concat(chunks);
-                resolve(buffer.toString(encoding));
-            });
-    });
-}
-
-/**
- * Gets decompressed response from
- * If the stream data is compressed, decompresses it using the Content-Encoding header.
- * @param {http.IncomingMessage} response
- * @returns {http.IncomingMessage|Stream} - Decompressed response
- * @ignore
- */
-function decompress(response) {
-    const compression = response.headers['content-encoding'];
-    let stream = response;
-    if (compression) {
-        let decompressor;
-        switch (compression) {
-        case 'gzip':
-            decompressor = zlib.createGunzip();
-            break;
-        case 'deflate':
-            decompressor = zlib.createInflate();
-            break;
-        case 'br':
-            decompressor = decompressStream();
-            break;
-        case undefined:
-            break;
-        default:
-            throw new RequestError(
-                `Invalid Content-Encoding header. Expected gzip, deflate or br, but received: ${compression}`,
-                response,
-                response.status,
-            );
-        }
-        stream = response.pipe(decompressor);
-    }
-    return stream;
-}
+const RequestError = require('./request-error');
+const readStreamToString = require('./read-stream-to-string');
+const { REQUEST_DEFAULT_OPTIONS } = require('./constants');
 
 /**
  * Sends a HTTP request and returns the response.
@@ -193,6 +89,8 @@ module.exports = async (options) => {
         timeout: timeoutSecs * 1000,
         rejectUnauthorized: ignoreSslErrors,
         body: payload,
+        json: parseBody,
+        decodeBody: true,
     };
 
     if (parseBody && !decodeBody) {
@@ -211,7 +109,7 @@ module.exports = async (options) => {
 
 
     return new Promise((resolve, reject) => {
-        const requestStream = got(requestOptions)
+        const requestStream = got.stream(requestOptions)
             .on('error', err => reject(err))
             .on('response', async (res) => {
                 let shouldAbort;
@@ -223,39 +121,19 @@ module.exports = async (options) => {
                 }
 
                 if (shouldAbort) {
-                    requestStream.abort();
+                    requestStream.destroy();
                     res.destroy();
 
-                    return reject(new RequestError(`Request for ${url} aborted due to abortFunction`), res, res.status);
+                    return reject(
+                        new RequestError(`Request for ${url} aborted due to abortFunction`, res, res.status),
+                    );
                 }
-
-                let cType;
                 try {
-                    cType = contentType.parse(res);
-                } catch (err) {
-                    res.destroy();
-                    // No reason to parse the body if the Content-Type header is invalid.
-                    return reject(new RequestError(`Invalid Content-Type header for URL: ${url}, ${err}`), res, res.status);
+                    res.body = await readStreamToString(res);
+                } catch (e) {
+                    reject(e);
                 }
-
-                const { encoding } = cType;
-
-                // 5XX and 4XX codes are handled as errors, requests will be retried.
-                const status = res.statusCode;
-
-                if (status >= 400 && throwOnHttpError) {
-                    const error = await getMoreErrorInfo(res, cType);
-                    return reject(error);
-                }
-
-                // Content-Type is fine. Read the body and respond.
-                try {
-                    res.body = await readStreamIntoString(res, encoding);
-                    resolve(res);
-                } catch (err) {
-                    // Error in reading the body.
-                    reject(err);
-                }
+                resolve(res);
             });
     });
 };

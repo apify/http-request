@@ -13,10 +13,6 @@ const REQUEST_DEFAULT_OPTIONS = {
 
 };
 
-const TRUNCATED_ERROR_CHARS = 100;
-
-
 module.exports = {
     REQUEST_DEFAULT_OPTIONS,
-    TRUNCATED_ERROR_CHARS,
 };
