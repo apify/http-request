@@ -6,12 +6,13 @@ class RequestError extends Error {
      * constructor
      * @param {string} message
      * @param {PassThrough} response
-     * @param {number} statusCode
+     * @param {Error} originalError
      */
-    constructor(message, response, statusCode) {
+    constructor(message, response, originalError) {
         super(message);
         this.response = response;
-        this.statusCode = statusCode;
+        this.statusCode = response.status;
+        this.error = originalError;
     }
 }
 

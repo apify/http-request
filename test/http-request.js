@@ -3,16 +3,11 @@ const zlib = require('zlib');
 const express = require('express');
 const bodyParser = require('body-parser');
 const { compress } = require('iltorb');
-const sinon = require('sinon');
-const log = require('apify-shared/log');
 const httpRequest = require('../src/index');
 
 const CONTENT = 'CONTENT';
 const HOST = '127.0.0.1';
 const ERROR_BODY = 'CUSTOM_ERROR';
-const JSON_BODY = {
-    message: ERROR_BODY,
-};
 
 const startExpressAppPromise = (app, port) => {
     return new Promise((resolve) => {
@@ -28,13 +23,24 @@ describe('httpRequest', () => {
         mochaListener = process.listeners('uncaughtException').shift();
         process.removeListener('uncaughtException', mochaListener);
         const app = express();
-        app.use(bodyParser());
+        app.use(bodyParser.urlencoded({
+            extended: true,
+        }));
+        app.use(bodyParser.json());
+
         app.get('/timeOut', async (req, res) => {
             const timeout = parseInt(req.query.timeout, 10);
             await new Promise(resolve => setTimeout(resolve, timeout));
             res.status(200);
             res.send(CONTENT);
         });
+
+        app.get('/invalidJson', (req, res) => {
+            res.status(200);
+            res.setHeader('content-type', req.headers['content-type']);
+            res.send('["test" : 123]');
+        });
+
         app.get('/proxy2', async (req, res) => {
             const ip = req.connection.remoteAddress;
             console.log(ip);
@@ -44,7 +50,6 @@ describe('httpRequest', () => {
 
         app.post('/echo', (req, res) => {
             res.setHeader('content-type', req.headers['content-type']);
-            console.log(req.body, 'REQUEST BODY');
             res.send(req.body);
         });
 
@@ -86,12 +91,6 @@ describe('httpRequest', () => {
             res.send(compressed);
         });
 
-        app.get('/500/json', async (req, res) => {
-            res.setHeader('Content-Type', 'application/json');
-            res.status(500);
-            res.send(JSON.stringify(JSON_BODY));
-        });
-
         app.get('/invalidBody', async (req, res) => {
             const compressed = await compress(Buffer.from(CONTENT, 'utf8'));
 
@@ -113,7 +112,7 @@ describe('httpRequest', () => {
         const data = {
             url: `http://${HOST}:${port}/gzip`,
             decodeBody: false,
-            parseBody: true,
+            json: true,
 
         };
         let error;
@@ -147,10 +146,11 @@ describe('httpRequest', () => {
         expect(response.body).to.be.eql(payload);
     });
 
-    xit('uses proxy (proxyUrl)', async () => {
-        const response = await httpRequest({ url: 'https://apify.com', proxyUrl: 'http://groups-SHADER,session-airbnb_44042475:rgC8JJ8NcrDnDdwsxDqWz7jKS@proxy.apify.com:8000' });
-        console.log(response.request, 'PROXY');
-        expect(true).to.be.eql(false);
+    it('uses proxy (proxyUrl)', async () => {
+        const proxy = 'http://groups-SHADER,session-airbnb_44042475:rgC8JJ8NcrDnDdwsxDqWz7jKS@proxy.apify.com:8000';
+        const { body } = await httpRequest({ url: 'https://api.apify.com/v2/browser-info', json: true });
+        const { body: proxyBody } = await httpRequest({ url: 'https://api.apify.com/v2/browser-info', proxyUrl: proxy, json: true });
+        expect(body.clientIp).to.be.not.eql(proxyBody.clientIp);
     });
 
     it('has timeout parameter working', async () => {
@@ -171,16 +171,32 @@ describe('httpRequest', () => {
         expect(error.message.includes("Timeout awaiting 'request'")).to.be.eql(true);
     });
 
-    xit('has valid return value', async () => {
-        const response = await httpRequest({ url: `http://${HOST}:${port}/echo` });
-        expect(response.constructor.name).to.be.eql('IncomingMessage');
+    it('has valid return value', async () => {
+        const response = await httpRequest({ url: `http://${HOST}:${port}/echo`, parseBody: false });
         expect(response).to.have.property('body');
         expect(response).to.have.property('statusCode');
         expect(response).to.have.property('headers');
+        expect(response).to.have.property('request');
     });
 
-    xit('ignores SSL Errors', async () => {
-        expect(true).to.be.eql(false);
+    it('catches SSL Errors', async () => {
+        let error;
+        try {
+            await httpRequest({ url: 'https://self-signed.badssl.com/', ignoreSslErrors: false });
+        } catch (e) {
+            error = e;
+        }
+        expect(error).to.not.be.undefined; // eslint-disable-line
+    });
+
+    it('ignores SSL Errors', async () => {
+        let error;
+        try {
+            await httpRequest({ url: 'https://self-signed.badssl.com/', ignoreSslErrors: true });
+        } catch (e) {
+            error = e;
+        }
+        expect(error).to.be.undefined; // eslint-disable-line
     });
 
 
@@ -273,10 +289,9 @@ describe('httpRequest', () => {
         expect(response.body).to.eql(CONTENT);
     });
 
-    xit('it does not throw error for 400+ error codes when throwOnHttpError is false', async () => {
+    it('it does not throw error for 400+ error codes when throwOnHttpError is false', async () => {
         const options = {
             url: `http://${HOST}:${port}/500`,
-
         };
         let error;
         try {
@@ -287,23 +302,24 @@ describe('httpRequest', () => {
             expect(error).to.be.undefined; // eslint-disable-line
     });
 
-    xit('it does throw error for 400+ error codes when throwOnHttpError is true', async () => {
+    it('it does throw error for 400+ error codes when throwOnHttpError is true', async () => {
         const options = {
             url: `http://${HOST}:${port}/500`,
-            throwOnHttpError: true,
+            throwHttpErrors: true,
 
         };
         let error;
+
         try {
             await httpRequest(options);
         } catch (e) {
             error = e;
         }
-            expect(error.message).to.exist; // eslint-disable-line
-        expect(error.message.includes(ERROR_BODY)).to.be.eql(true);
+
+        expect(error.message).to.exist; // eslint-disable-line
     });
 
-    xit('it throws error when the body cannot be parsed and the code is 500 when throwOnHttpError is true', async () => {
+    it('it throws error when the body cannot be parsed and the code is 500 when throwOnHttpError is true', async () => {
         const options = {
             url: `http://${HOST}:${port}/500/invalidBody`,
             throwOnHttpError: true,
@@ -318,7 +334,7 @@ describe('httpRequest', () => {
             expect(error.message).to.exist; // eslint-disable-line
     });
 
-    xit('it throws error when the body cannot be parsed', async () => {
+    it('it throws error when the body cannot be parsed', async () => {
         const options = {
             url: `http://${HOST}:${port}/invalidBody`,
 
@@ -332,19 +348,47 @@ describe('httpRequest', () => {
             expect(error.message).to.exist; // eslint-disable-line
     });
 
-    xit('it returns json when 500 even if content-type is different, throwOnHttpError is true ', async () => {
+    it('it returns stream when stream is set to true', async () => {
         const options = {
-            url: `http://${HOST}:${port}/500/json`,
-            throwOnHttpError: true,
+            url: `http://${HOST}:${port}/gzip`,
+            stream: true,
 
         };
-        let error;
+        const stream = await httpRequest(options);
+        expect(stream.constructor.name).to.be.not.eql('Promise');
+    });
+
+    it('it catches errors from abort functions and rejects the promise with the same error', async () => {
+        const error = new Error('Custom error');
+        const options = {
+            url: `http://${HOST}:${port}/gzip`,
+            stream: false,
+            abortFunction: () => {
+                throw error;
+            },
+
+        };
+        let rejectedError;
         try {
             await httpRequest(options);
         } catch (e) {
-            error = e;
+            rejectedError = e;
         }
-            expect(error.message).to.exist; // eslint-disable-line
-        expect(error.message.includes(JSON_BODY.message)).to.be.eql(true);
+        expect(rejectedError.message).to.be.eql(error.message);
+    });
+
+    it('it rethrows error if the json body cannot be parsed', async () => {
+        const options = {
+            url: `http://${HOST}:${port}/invalidJson`,
+            json: true,
+
+        };
+        let rejectedError;
+        try {
+            await httpRequest(options);
+        } catch (e) {
+            rejectedError = e;
+        }
+        expect(rejectedError.message).to.be.eql('Could not parse the body');
     });
 });

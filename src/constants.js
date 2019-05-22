@@ -3,12 +3,12 @@ const REQUEST_DEFAULT_OPTIONS = {
     followRedirect: true,
     headers: {},
     method: 'GET',
-    throwOnHttpError: false,
+    throwHttpErrors: false,
     abortFunction: null,
     timeoutSecs: 30,
     ignoreSslErrors: false,
     decodeBody: true,
-    parseBody: true,
+    json: false,
     stream: false,
 
 };

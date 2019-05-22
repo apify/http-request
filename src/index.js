@@ -2,6 +2,7 @@ const got = require('got');
 const _ = require('underscore');
 const ProxyAgent = require('proxy-agent');
 
+const maybeDecompressBrotli = require('./maybe-decompress-brotli');
 const RequestError = require('./request-error');
 const readStreamToString = require('./read-stream-to-string');
 const { REQUEST_DEFAULT_OPTIONS } = require('./constants');
@@ -49,18 +50,18 @@ const { REQUEST_DEFAULT_OPTIONS } = require('./constants');
  *  The function receives a single argument - an instance of Node's
  *  [`http.IncomingMessage`](https://nodejs.org/api/http.html#http_class_http_incomingmessage)
  *  class and it should return `true` if request should be aborted, or `false` otherwise.
- * @param [options.throwOnHttpError=false]
+ * @param [options.throwHttpErrors=false]
  *  If set to true function throws and error on 4XX and 5XX response codes.
  * @param [options.decodeBody=true]
  *  If set to true decoded body is returned. Cannot be set to false if the [options.parsedBody] is true
- * @param [options.parsedBody=true]
- *  If set to true parsed body is returned
+ * @param [options.json=false]
+ *  If set to true parsed body is returned. And content-type header is set to `application/json`
  * @param [options.stream=false]
- *  If set to true parsed body is returned
- * @return {http.IncomingMessage}
+ *  If set to true decompressed stream is returned
+ * @return {Promise<object>}
  * @name httpRequest
  */
-module.exports = async (options) => {
+module.exports = (options) => {
     const opts = _.defaults({}, options, REQUEST_DEFAULT_OPTIONS);
 
     const {
@@ -69,12 +70,12 @@ module.exports = async (options) => {
         headers,
         followRedirect,
         maxRedirects,
-        throwOnHttpError,
+        throwHttpErrors,
         abortFunction,
         timeoutSecs,
         ignoreSslErrors,
         decodeBody,
-        parseBody,
+        json,
         proxyUrl,
         payload,
         stream,
@@ -87,31 +88,35 @@ module.exports = async (options) => {
         followRedirect,
         maxRedirects,
         timeout: timeoutSecs * 1000,
-        rejectUnauthorized: ignoreSslErrors,
+        rejectUnauthorized: !ignoreSslErrors,
         body: payload,
-        json: parseBody,
+        json,
         decodeBody: true,
+        throwHttpErrors,
     };
 
-    if (parseBody && !decodeBody) {
+    if (json && !decodeBody) {
         throw new Error('If parseBody is set to true the decodeBody must be also true.');
     }
 
     if (proxyUrl) {
         const agent = new ProxyAgent(proxyUrl);
 
-        requestOptions.agent = agent;
+        requestOptions.agent = {
+            https: agent,
+            http: agent,
+        };
     }
 
-    if (stream) {
-        return got.stream(requestOptions);
+    if (json) {
+        requestOptions.headers = _.defaults(requestOptions.headers, { 'Content-Type': 'application/json' });
     }
-
 
     return new Promise((resolve, reject) => {
         const requestStream = got.stream(requestOptions)
             .on('error', err => reject(err))
             .on('response', async (res) => {
+                let body;
                 let shouldAbort;
 
                 try {
@@ -125,14 +130,33 @@ module.exports = async (options) => {
                     res.destroy();
 
                     return reject(
-                        new RequestError(`Request for ${url} aborted due to abortFunction`, res, res.status),
+                        new RequestError(`Request for ${url} aborted due to abortFunction`, res),
                     );
                 }
-                try {
-                    res.body = await readStreamToString(res);
-                } catch (e) {
-                    reject(e);
+
+                const decompressedResponse = maybeDecompressBrotli(res);
+
+                if (stream) {
+                    resolve(decompressedResponse);
                 }
+
+                try {
+                    body = await readStreamToString(decompressedResponse);
+                } catch (e) {
+                    reject(new RequestError('Could convert stream to string', decompressedResponse, e));
+                }
+
+                if (json) {
+                    try {
+                        body = await JSON.parse(body);
+                    } catch (e) {
+                        reject(new RequestError('Could not parse the body', decompressedResponse, e));
+                    }
+                }
+
+                res.body = body;
+
+
                 resolve(res);
             });
     });
