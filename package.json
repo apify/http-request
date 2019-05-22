@@ -4,7 +4,8 @@
     "description": "",
     "main": "src/index.js",
     "scripts": {
-        "test": "nyc --reporter=html --reporter=text mocha --timeout 60000  --exit"
+        "test": "nyc --reporter=html --reporter=text mocha --timeout 60000  --exit",
+        "lint": "npm run build && ./node_modules/.bin/eslint ./src ./test"
     },
     "keywords": [
         "apify"
@@ -26,15 +27,9 @@
         "sinon": "^7.3.2"
     },
     "dependencies": {
-        "apify-shared": "^0.1.42",
-        "axios": "^0.18.0",
-        "content-type": "^1.0.4",
         "got": "^9.6.0",
         "iltorb": "^2.4.2",
         "proxy-agent": "^3.1.0",
-        "request": "^2.88.0",
-        "underscore": "^1.9.1",
-        "util": "^0.11.1",
-        "zlib": "^1.0.5"
+        "underscore": "^1.9.1"
     }
 }
