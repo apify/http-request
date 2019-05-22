@@ -47,18 +47,21 @@ const { REQUEST_DEFAULT_OPTIONS } = require('./constants');
  * @param [options.abortFunction=null]
  *  A function that determines whether the request should be aborted. It is called when the server
  *  responds with the HTTP headers, but before the actual data is downloaded.
- *  The function receives a single argument - an instance of Node's
- *  [`http.IncomingMessage`](https://nodejs.org/api/http.html#http_class_http_incomingmessage)
  *  class and it should return `true` if request should be aborted, or `false` otherwise.
+ *  It won't work if you have the `options.stream` set to true.
  * @param [options.throwHttpErrors=false]
  *  If set to true function throws and error on 4XX and 5XX response codes.
  * @param [options.decodeBody=true]
  *  If set to true decoded body is returned. Cannot be set to false if the [options.parsedBody] is true
  * @param [options.json=false]
  *  If set to true parsed body is returned. And content-type header is set to `application/json`
+ *  It won't work if you have the `options.stream` set to true.
  * @param [options.stream=false]
- *  If set to true decompressed stream is returned
- * @return {Promise<object>}
+ *  If set to true decompressed stream is returned.
+ * @return {Promise<object>} - The response object will typically be a
+ * [Node.js HTTP response stream](https://nodejs.org/api/http.html#http_class_http_incomingmessage),
+ * however, if returned from the cache it will be a [response-like object](https://github.com/lukechilds/responselike) which behaves in the same way.
+
  * @name httpRequest
  */
 module.exports = (options) => {
@@ -96,7 +99,7 @@ module.exports = (options) => {
     };
 
     if (json && !decodeBody) {
-        throw new Error('If parseBody is set to true the decodeBody must be also true.');
+        throw new Error('If json is set to true the decodeBody must be also true.');
     }
 
     if (proxyUrl) {
