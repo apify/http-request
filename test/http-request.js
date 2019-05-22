@@ -123,7 +123,7 @@ describe('httpRequest', () => {
             error = e;
         }
 
-        expect(error.message).to.be.eql('If parseBody is set to true the decodeBody must be also true.');
+        expect(error.message).to.be.eql('If json is set to true the decodeBody must be also true.');
     });
 
 
