@@ -282,6 +282,7 @@ describe('httpRequest', () => {
         const options = {
             url: `http://${HOST}:${port}/brotli`,
             parseBody: false,
+            useBrotli: true,
 
         };
 

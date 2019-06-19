@@ -10,6 +10,7 @@ const REQUEST_DEFAULT_OPTIONS = {
     decodeBody: true,
     json: false,
     stream: false,
+    useBrotli: false,
 
 };
 

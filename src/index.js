@@ -2,9 +2,9 @@ const got = require('got');
 const _ = require('underscore');
 const ProxyAgent = require('proxy-agent');
 
-const maybeDecompressBrotli = require('./maybe-decompress-brotli');
-const RequestError = require('./request-error');
-const readStreamToString = require('./read-stream-to-string');
+const maybeDecompressBrotli = require('./maybe_decompress_brotli');
+const RequestError = require('./request_error');
+const readStreamToString = require('./read_stream_to_string');
 const { REQUEST_DEFAULT_OPTIONS } = require('./constants');
 
 /**
@@ -58,6 +58,8 @@ const { REQUEST_DEFAULT_OPTIONS } = require('./constants');
  *  It won't work if you have the `options.stream` set to true.
  * @param [options.stream=false]
  *  If set to true decompressed stream is returned.
+ * @param [options.useBrotli=false]
+ *  If set to true you must have the peer dependency `iltorb`
  * @return {Promise<object>} - The response object will typically be a
  * [Node.js HTTP response stream](https://nodejs.org/api/http.html#http_class_http_incomingmessage),
  * however, if returned from the cache it will be a [response-like object](https://github.com/lukechilds/responselike) which behaves in the same way.
@@ -82,6 +84,7 @@ module.exports = (options) => {
         proxyUrl,
         payload,
         stream,
+        useBrotli,
     } = opts;
 
     const requestOptions = {
@@ -125,7 +128,7 @@ module.exports = (options) => {
                 try {
                     shouldAbort = abortFunction && abortFunction(res);
                 } catch (e) {
-                    reject(e);
+                    return reject(e);
                 }
 
                 if (shouldAbort) {
@@ -137,30 +140,30 @@ module.exports = (options) => {
                     );
                 }
 
-                const decompressedResponse = maybeDecompressBrotli(res);
+                const decompressedResponse = maybeDecompressBrotli(res, useBrotli);
 
                 if (stream) {
-                    resolve(decompressedResponse);
+                    return resolve(decompressedResponse);
                 }
 
                 try {
                     body = await readStreamToString(decompressedResponse);
                 } catch (e) {
-                    reject(new RequestError('Could convert stream to string', decompressedResponse, e));
+                    return reject(new RequestError('Could convert stream to string', decompressedResponse));
                 }
 
                 if (json) {
                     try {
                         body = await JSON.parse(body);
                     } catch (e) {
-                        reject(new RequestError('Could not parse the body', decompressedResponse, e));
+                        return reject(new RequestError('Could not parse the body', decompressedResponse));
                     }
                 }
 
                 res.body = body;
 
 
-                resolve(res);
+                return resolve(res);
             });
     });
 };
