@@ -1,5 +1,5 @@
 {
-    "name": "http-request",
+    "name": "@apify/http-request",
     "version": "1.0.0",
     "description": "Wrapper of got package used across Apify",
     "main": "src/index.js",
