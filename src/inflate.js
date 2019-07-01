@@ -1,4 +1,4 @@
-/*eslint-disable no-underscore-dangle */
+/* eslint-disable no-underscore-dangle */
 
 const zlib = require('zlib');
 const stream = require('stream');
@@ -39,8 +39,8 @@ module.exports.createInflate = function (options) {
                 self.once('finish', () => {
                     self._inflate.end();
                 });
-                self._inflate.on('data', (chunk) => {
-                    self.push(chunk);
+                self._inflate.on('data', (data) => {
+                    self.push(data);
                 });
 
                 self._inflate.once('end', () => {

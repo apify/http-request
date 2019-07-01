@@ -3,7 +3,6 @@ const zlib = require('zlib');
 const express = require('express');
 const bodyParser = require('body-parser');
 const { compress } = require('iltorb');
-const got = require('got');
 const httpRequest = require('../src/index');
 
 const CONTENT = 'CONTENT';
