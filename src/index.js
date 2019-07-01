@@ -2,10 +2,10 @@ const got = require('got');
 const _ = require('underscore');
 const ProxyAgent = require('proxy-agent');
 
-const maybeDecompressBrotli = require('./maybe_decompress_brotli');
 const RequestError = require('./request_error');
 const readStreamToString = require('./read_stream_to_string');
 const { REQUEST_DEFAULT_OPTIONS } = require('./constants');
+const decompress = require('./decompress');
 
 /**
  * Sends a HTTP request and returns the response.
@@ -66,7 +66,7 @@ const { REQUEST_DEFAULT_OPTIONS } = require('./constants');
 
  * @name httpRequest
  */
-module.exports = (options) => {
+module.exports = async (options) => {
     const opts = _.defaults({}, options, REQUEST_DEFAULT_OPTIONS);
 
     const {
@@ -75,7 +75,7 @@ module.exports = (options) => {
         headers,
         followRedirect,
         maxRedirects,
-        throwHttpErrors,
+        throwOnHttpErrors,
         abortFunction,
         timeoutSecs,
         ignoreSslErrors,
@@ -88,17 +88,17 @@ module.exports = (options) => {
     } = opts;
 
     const requestOptions = {
-        url,
         method,
-        headers,
+        headers: _.defaults(headers, { 'Accept-Encoding': `gzip, deflate${useBrotli ? ', br' : ''}` }),
         followRedirect,
         maxRedirects,
         timeout: timeoutSecs * 1000,
         rejectUnauthorized: !ignoreSslErrors,
         body: payload,
         json,
-        decodeBody: true,
-        throwHttpErrors,
+        throwHttpErrors: false,
+        stream: true,
+        decompress: false,
     };
 
     if (json && !decodeBody) {
@@ -119,11 +119,17 @@ module.exports = (options) => {
     }
 
     return new Promise((resolve, reject) => {
-        const requestStream = got.stream(requestOptions)
+        const requestStream = got.stream(url, requestOptions)
             .on('error', err => reject(err))
             .on('response', async (res) => {
                 let body;
                 let shouldAbort;
+
+                if (throwOnHttpErrors && res.statusCode >= 400) {
+                    return reject(
+                        new RequestError('Request failed', res),
+                    );
+                }
 
                 try {
                     shouldAbort = abortFunction && abortFunction(res);
@@ -139,8 +145,14 @@ module.exports = (options) => {
                         new RequestError(`Request for ${url} aborted due to abortFunction`, res),
                     );
                 }
+                let decompressedResponse;
 
-                const decompressedResponse = maybeDecompressBrotli(res, useBrotli);
+                if (decodeBody) {
+                    decompressedResponse = decompress(res, useBrotli);
+                } else {
+                    decompressedResponse = res;
+                }
+
 
                 if (stream) {
                     return resolve(decompressedResponse);
@@ -149,6 +161,9 @@ module.exports = (options) => {
                 try {
                     body = await readStreamToString(decompressedResponse);
                 } catch (e) {
+                    if (e.message === 'incorrect header check') {
+                        console.log('Incorrect header check. Try to use different accept-encoding header');
+                    }
                     return reject(new RequestError('Could convert stream to string', decompressedResponse));
                 }
 
@@ -164,6 +179,6 @@ module.exports = (options) => {
 
 
                 return resolve(res);
-            });
+            }).resume()
     });
 };
