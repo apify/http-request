@@ -2,7 +2,14 @@ const { expect } = require('chai');
 const zlib = require('zlib');
 const express = require('express');
 const bodyParser = require('body-parser');
+const FormData = require('form-data');
 const { compress } = require('iltorb');
+const fs = require('fs');
+const path = require('path');
+const multer = require('multer');
+
+const upload = multer();
+
 const httpRequest = require('../src/index');
 
 const CONTENT = 'CONTENT';
@@ -50,6 +57,10 @@ describe('httpRequest', () => {
         app.post('/echo', (req, res) => {
             res.setHeader('content-type', req.headers['content-type']);
             res.send(req.body);
+        });
+
+        app.post('/multipart', upload.single('file'), (req, res) => {
+            res.send(req.file);
         });
 
         app.get('/gzip', (req, res) => {
@@ -114,6 +125,27 @@ describe('httpRequest', () => {
     after(() => {
         server.close();
         process.on('uncaughtException', mochaListener);
+    });
+
+    it('Test multipart/form-data format support.', async () => { // multipart/form-data
+        const fileName = 'http-request.js';
+        const filePath = path.join(__dirname, fileName);
+        const form = new FormData();
+
+        form.append('field2', 'my value');
+        form.append('file', fs.createReadStream(filePath));
+
+        const opts = {
+            url: `http://${HOST}:${port}/multipart`,
+            method: 'POST',
+            payload: form,
+
+        };
+        const response = await httpRequest(opts);
+        const body = JSON.parse(response.body);
+        expect(response.statusCode).to.be.eql(200);
+        expect(body.mimetype).to.be.eql('application/javascript');
+        expect(body.fieldname).to.be.eql('file');
     });
 
     it('throws error when decode body is false and parse body is true', async () => {

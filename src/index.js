@@ -88,6 +88,7 @@ module.exports = async (options) => {
     } = opts;
 
     const requestOptions = {
+        url,
         method,
         headers: _.defaults(headers, { 'Accept-Encoding': `gzip, deflate${useBrotli ? ', br' : ''}` }),
         followRedirect,
@@ -119,7 +120,7 @@ module.exports = async (options) => {
     }
 
     return new Promise((resolve, reject) => {
-        const requestStream = got.stream(url, requestOptions)
+        const requestStream = got(requestOptions)
             .on('error', err => reject(err))
             .on('response', async (res) => {
                 let body;
