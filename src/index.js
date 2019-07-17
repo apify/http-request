@@ -165,7 +165,7 @@ module.exports = async (options) => {
                     if (e.message === 'incorrect header check') {
                         console.log('Incorrect header check. Try to use different accept-encoding header');
                     }
-                    return reject(new RequestError('Could convert stream to string', decompressedResponse));
+                    return reject(new RequestError('Could not convert stream to string', decompressedResponse));
                 }
 
                 if (json) {
