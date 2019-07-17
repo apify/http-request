@@ -26,7 +26,7 @@ module.exports.createInflate = function (options) {
             const self = this;
             if (!self._inflate) {
                 // If the response stream does not have a valid deflate header, use `InflateRaw`
-                if ((Buffer.from(chunk, encoding)[0] & 0x0F) === 0x08) { //eslint-disable-line
+                if ((chunk.slice(0,10)[0] & 0x0F) === 0x08) { //eslint-disable-line
                     self._inflate = zlib.createInflate(options);
                 } else {
                     self._inflate = zlib.createInflateRaw(options);

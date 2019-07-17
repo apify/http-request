@@ -9,7 +9,7 @@ class RequestError extends Error {
      */
     constructor(message, response) {
         super(message);
-        this.response = response;
+        this.response = { body: response.body, headers: response.headers };
         this.statusCode = response.status;
     }
 }

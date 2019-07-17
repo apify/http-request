@@ -71,20 +71,20 @@ module.exports = async (options) => {
 
     const {
         url,
-        method,
-        headers,
-        followRedirect,
-        maxRedirects,
-        throwOnHttpErrors,
-        abortFunction,
-        timeoutSecs,
-        ignoreSslErrors,
-        decodeBody,
-        json,
+        method = 'GET',
+        headers = {},
+        followRedirect = true,
+        maxRedirects = 20,
+        throwOnHttpErrors = false,
+        abortFunction = null,
+        timeoutSecs = 30,
+        ignoreSslErrors = false,
+        decodeBody = true,
+        json = false,
+        stream = false,
+        useBrotli = false,
         proxyUrl,
         payload,
-        stream,
-        useBrotli,
     } = opts;
 
     const requestOptions = {
@@ -103,7 +103,7 @@ module.exports = async (options) => {
     };
 
     if (json && !decodeBody) {
-        throw new Error('If json is set to true the decodeBody must be also true.');
+        throw new Error('If the "json" parameter is true, "decodeBody" must be also true.');
     }
 
     if (proxyUrl) {
