@@ -11,11 +11,13 @@ async function readStreamToString(response, encoding) {
     return new Promise((resolve, reject) => {
         const chunks = [];
         response
-            .on('data', chunk => chunks.push(chunk))
-            .on('error', err => reject(err))
+            .on('data', (chunk) => {
+                chunks.push(chunk);
+            })
+            .on('error', e => reject(e))
             .on('end', () => {
                 const buffer = Buffer.concat(chunks);
-                resolve(buffer.toString(encoding));
+                return resolve(buffer.toString(encoding));
             });
     });
 }

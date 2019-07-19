@@ -2,7 +2,14 @@ const { expect } = require('chai');
 const zlib = require('zlib');
 const express = require('express');
 const bodyParser = require('body-parser');
+const FormData = require('form-data');
 const { compress } = require('iltorb');
+const fs = require('fs');
+const path = require('path');
+const multer = require('multer');
+
+const upload = multer();
+
 const httpRequest = require('../src/index');
 
 const CONTENT = 'CONTENT';
@@ -43,7 +50,6 @@ describe('httpRequest', () => {
 
         app.get('/proxy2', async (req, res) => {
             const ip = req.connection.remoteAddress;
-            console.log(ip);
             res.status(200);
             res.send(ip);
         });
@@ -51,6 +57,10 @@ describe('httpRequest', () => {
         app.post('/echo', (req, res) => {
             res.setHeader('content-type', req.headers['content-type']);
             res.send(req.body);
+        });
+
+        app.post('/multipart', upload.single('file'), (req, res) => {
+            res.send(req.file);
         });
 
         app.get('/gzip', (req, res) => {
@@ -64,6 +74,15 @@ describe('httpRequest', () => {
         app.get('/deflate', (req, res) => {
             // return zlib.compress(CONTENT);
             zlib.deflate(CONTENT, (error, result) => {
+                if (error) throw error;
+                res.setHeader('content-encoding', 'deflate');
+                res.send(result);
+            });
+        });
+
+        app.get('/deflate-raw', (req, res) => {
+            // return zlib.compress(CONTENT);
+            zlib.deflateRaw(CONTENT, (error, result) => {
                 if (error) throw error;
                 res.setHeader('content-encoding', 'deflate');
                 res.send(result);
@@ -92,7 +111,7 @@ describe('httpRequest', () => {
         });
 
         app.get('/invalidBody', async (req, res) => {
-            const compressed = await compress(Buffer.from(CONTENT, 'utf8'));
+            const compressed = await compress(Buffer.from('{', 'utf8'));
 
             res.setHeader('content-encoding', 'deflate');
             res.status(500);
@@ -106,6 +125,27 @@ describe('httpRequest', () => {
     after(() => {
         server.close();
         process.on('uncaughtException', mochaListener);
+    });
+
+    it('Test multipart/form-data format support.', async () => { // multipart/form-data
+        const fileName = 'http-request.js';
+        const filePath = path.join(__dirname, fileName);
+        const form = new FormData();
+
+        form.append('field2', 'my value');
+        form.append('file', fs.createReadStream(filePath));
+
+        const opts = {
+            url: `http://${HOST}:${port}/multipart`,
+            method: 'POST',
+            payload: form,
+
+        };
+        const response = await httpRequest(opts);
+        const body = JSON.parse(response.body);
+        expect(response.statusCode).to.be.eql(200);
+        expect(body.mimetype).to.be.eql('application/javascript');
+        expect(body.fieldname).to.be.eql('file');
     });
 
     it('throws error when decode body is false and parse body is true', async () => {
@@ -123,7 +163,7 @@ describe('httpRequest', () => {
             error = e;
         }
 
-        expect(error.message).to.be.eql('If parseBody is set to true the decodeBody must be also true.');
+        expect(error.message).to.be.eql('If the "json" parameter is true, "decodeBody" must be also true.');
     });
 
 
@@ -152,6 +192,12 @@ describe('httpRequest', () => {
         const { body: proxyBody } = await httpRequest({ url: 'https://api.apify.com/v2/browser-info', proxyUrl: proxy, json: true });
         expect(body.clientIp).to.be.not.eql(proxyBody.clientIp);
     });
+
+    it('decompress deflateRaw when content-encoding is deflate', async () => {
+        const { body } = await httpRequest({ url: `http://${HOST}:${port}/deflate-raw` });
+        expect(body).to.be.eql(CONTENT);
+    });
+
 
     it('has timeout parameter working', async () => {
         const waitTime = 1000;
@@ -213,7 +259,7 @@ describe('httpRequest', () => {
 
         await httpRequest(data);
 
-        expect(constructorName).to.be.eql('PassThrough');
+        expect(constructorName).to.be.eql('Transform');
     });
 
     it('it does not aborts request when aborts function returns false', async () => {
@@ -282,6 +328,7 @@ describe('httpRequest', () => {
         const options = {
             url: `http://${HOST}:${port}/brotli`,
             parseBody: false,
+            useBrotli: true,
 
         };
 
@@ -302,10 +349,10 @@ describe('httpRequest', () => {
             expect(error).to.be.undefined; // eslint-disable-line
     });
 
-    it('it does throw error for 400+ error codes when throwOnHttpError is true', async () => {
+    it('it does throw error for 400+ error codes when throwOnHttpErrors is true', async () => {
         const options = {
             url: `http://${HOST}:${port}/500`,
-            throwHttpErrors: true,
+            throwOnHttpErrors: true,
 
         };
         let error;
@@ -319,10 +366,10 @@ describe('httpRequest', () => {
         expect(error.message).to.exist; // eslint-disable-line
     });
 
-    it('it throws error when the body cannot be parsed and the code is 500 when throwOnHttpError is true', async () => {
+    it('it throws error when the body cannot be parsed and the code is 500 when throwOnHttpErrors is true', async () => {
         const options = {
             url: `http://${HOST}:${port}/500/invalidBody`,
-            throwOnHttpError: true,
+            throwOnHttpErrors: true,
 
         };
         let error;
@@ -337,6 +384,7 @@ describe('httpRequest', () => {
     it('it throws error when the body cannot be parsed', async () => {
         const options = {
             url: `http://${HOST}:${port}/invalidBody`,
+            json: true,
 
         };
         let error;
