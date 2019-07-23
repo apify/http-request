@@ -19,7 +19,7 @@ module.exports = function maybeCreateBrotliDecompressor(response, useBrotli) {
         decompressor = require('zlib').createBrotliDecompress(); // eslint-disable-line
     } else {
         try {
-            decompressor = require('iltorb').decompressStream; // eslint-disable-line
+            decompressor = require('iltorb').decompressStream(); // eslint-disable-line
         } catch (e) {
             throw new Error('You must have iltorb peer dependency installed to use brotli decompression or use NodeJs v10.16.0+');
         }
