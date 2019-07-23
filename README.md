@@ -115,7 +115,7 @@ If set to true decompressed stream is returned.
 Default value is `false`
 
 #### options.useBrotli
-If set to true Brotli decompression is enabled. You must have the peer dependency `iltorb`
+If set to true Brotli decompression is enabled. Brotli has a Node.js native support from `V10.16.0`. If you use older version you must have the peer dependency `iltorb` installed.
 
 Default value is `false`
 
