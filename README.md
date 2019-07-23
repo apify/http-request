@@ -19,7 +19,7 @@ The function has similar functionality and has nearly the same options as the [g
 ### Get decoded and decompressed response
  
   ```javascript
-     const httpRequest = require("@apify/httpRequest");
+     const httpRequest = require("@apify/http-request");
   
      const {headers, body, statusCode} =  await httpRequest({ url: 'https://api.apify.com/v2/browser-info'});
  
@@ -28,7 +28,7 @@ The function has similar functionality and has nearly the same options as the [g
 ## Get JSON from API
  
 ```javascript
-    const httpRequest = require("@apify/httpRequest");
+    const httpRequest = require("@apify/http-request");
 
     const {headers, body, statusCode} =  await httpRequest({ url: 'https://api.apify.com/v2/browser-info', json: true });
 
@@ -36,7 +36,7 @@ The function has similar functionality and has nearly the same options as the [g
 
 ### Stream the response
 ```javascript
-     const httpRequest = require("@apify/httpRequest");
+     const httpRequest = require("@apify/http-request");
 
      const responseStream =  await httpRequest({ url: 'https://apify.com', stream: true});
 ```
