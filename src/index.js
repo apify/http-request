@@ -118,7 +118,6 @@ module.exports = async (options) => {
     if (json) {
         requestOptions.headers = _.defaults(requestOptions.headers, { 'Content-Type': 'application/json' });
     }
-
     return new Promise((resolve, reject) => {
         const requestStream = got(requestOptions)
             .on('error', err => reject(err))
