@@ -456,6 +456,7 @@ describe('httpRequest', () => {
 
         };
         const { body } = await httpRequest(options);
+
         expect(body.includes('Host')).to.be.eql(true);
         expect(body.includes('User-Agent')).to.be.eql(true);
 
