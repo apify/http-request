@@ -1,15 +1,28 @@
 const assert = require('assert');
 const http = require('http');
 
+/**
+ * Function that finds a corresponding Symbol for headers.
+ * @return {symbol}
+ */
 function findOutHeadersSymbol() {
     const x = new http.OutgoingMessage();
     const s = Object.getOwnPropertySymbols(x);
     const symbol = s.find(sym => typeof sym === 'symbol'
         && sym.toString() === 'Symbol(outHeadersKey)');
     assert(symbol.toString() === 'Symbol(outHeadersKey)');
+
     return symbol;
 }
 
+/**
+ * Function that overrides native Node.Js headers lower casing.
+ * Http headers are by specification compared in case insensitive mode, however browsers sends capitalized headers.
+ * This hack is done because we need to have the headers exactly same as in the browser in the `requestAsBrowser`
+ * util function from (Apify)[https://www.npmjs.com/package/apify] NPM package
+ * @param options
+ * @return {Function}
+ */
 function monkeyPatchHeaders(options) {
     const keys = Object.keys(options.headers);
     const nodeVersion = Number(process.version.match(/^v(\d+\.\d+)/)[1]);
@@ -22,6 +35,7 @@ function monkeyPatchHeaders(options) {
         return name.toLowerCase();
     };
 
+    // Node.Js V8 handles the headers in a different way.
     if (nodeVersion <= 8.10) {
         return function (name, value) {
             const outHeadersKey = findOutHeadersSymbol();
@@ -34,6 +48,8 @@ function monkeyPatchHeaders(options) {
             headers[key] = [key, value];
         };
     }
+
+    // Version 10.16+ handles the headers in a same way
     return function (name, value) {
         const outHeadersKey = findOutHeadersSymbol();
 
