@@ -2,10 +2,12 @@ const got = require('got');
 const _ = require('underscore');
 const ProxyAgent = require('proxy-agent');
 
+const http = require('http');
 const RequestError = require('./request_error');
 const readStreamToString = require('./read_stream_to_string');
 const { REQUEST_DEFAULT_OPTIONS } = require('./constants');
 const decompress = require('./decompress');
+const monkeyPatchHeaders = require('./monkey_patch_headers');
 
 /**
  * Sends a HTTP request and returns the response.
@@ -60,12 +62,16 @@ const decompress = require('./decompress');
  *  If set to true decompressed stream is returned.
  * @param [options.useBrotli=false]
  *  If set to true you must have the peer dependency `iltorb`
+ *  * @param [options.useCaseSensitiveHeaders=false]
+ *  If set to true headers will not be lower cased. Experimental feature. Might not work on all versions of Node.Js.
  * @return {Promise<object>} - The response object will typically be a
  * [Node.js HTTP response stream](https://nodejs.org/api/http.html#http_class_http_incomingmessage),
  * however, if returned from the cache it will be a [response-like object](https://github.com/lukechilds/responselike) which behaves in the same way.
 
  * @name httpRequest
  */
+let oldSetHeader;
+
 module.exports = async (options) => {
     const opts = _.defaults({}, options, REQUEST_DEFAULT_OPTIONS);
 
@@ -85,6 +91,7 @@ module.exports = async (options) => {
         useBrotli = false,
         proxyUrl,
         payload,
+        useCaseSensitiveHeaders,
     } = opts;
 
     const requestOptions = {
@@ -118,6 +125,12 @@ module.exports = async (options) => {
     if (json) {
         requestOptions.headers = _.defaults(requestOptions.headers, { 'Content-Type': 'application/json' });
     }
+
+    if (useCaseSensitiveHeaders) {
+        oldSetHeader = http.OutgoingMessage.prototype.setHeader;
+        http.OutgoingMessage.prototype.setHeader = monkeyPatchHeaders(requestOptions);
+    }
+
     return new Promise((resolve, reject) => {
         const requestStream = got(requestOptions)
             .on('error', err => reject(err))
@@ -176,7 +189,9 @@ module.exports = async (options) => {
                 }
 
                 res.body = body;
-
+                if (useCaseSensitiveHeaders) {
+                    http.OutgoingMessage.prototype.setHeader = oldSetHeader;
+                }
 
                 return resolve(res);
             }).resume();

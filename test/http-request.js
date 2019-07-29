@@ -118,6 +118,10 @@ describe('httpRequest', () => {
             res.send(compressed);
         });
 
+        app.get('/rawHeaders', (req, res) => {
+            res.send(JSON.stringify(req.rawHeaders));
+        });
+
         server = await startExpressAppPromise(app, 0);
         port = server.address().port; //eslint-disable-line
     });
@@ -438,5 +442,28 @@ describe('httpRequest', () => {
             rejectedError = e;
         }
         expect(rejectedError.message).to.be.eql('Could not parse the body');
+    });
+
+    it('monkey patched headers work as expected', async () => {
+        const options = {
+            url: `http://${HOST}:${port}/rawHeaders`,
+            json: true,
+            useCaseSensitiveHeaders: true,
+            headers: {
+                'User-Agent': 'Test',
+                Host: HOST,
+            },
+
+        };
+        const { body } = await httpRequest(options);
+
+        expect(body.includes('Host')).to.be.eql(true);
+        expect(body.includes('User-Agent')).to.be.eql(true);
+
+        options.useCaseSensitiveHeaders = false;
+        const { body: body2 } = await httpRequest(options);
+
+        expect(body2.includes('Host')).to.be.eql(false);
+        expect(body2.includes('User-Agent')).to.be.eql(false);
     });
 });
