@@ -16,6 +16,11 @@ const monkeyPatchHeaders = require('./monkey_patch_headers');
  *
  * - It support not only Gzip compression, but also Brotli and Deflate. To activate this feature,
  *   simply add `Accept-Encoding: gzip, deflate, br` to `options.headers` (or a combination).
+ *
+ * - Fixes old Gzip decompression see (CheerioCrawler's gzip decompression fails on certain pages)[https://github.com/apifytech/apify-js/issues/266]
+ *
+ * - Fixes socket handling see (Too many sockets of Ubuntu with 'CLOSE_WAIT')[https://github.com/request/request/issues/2440]
+ *
  * - Enables abortion of the request based on the response headers, before the data is downloaded.
  *   See `options.abortFunction` parameter.
  *

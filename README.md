@@ -1,36 +1,51 @@
 # Http Request
-Sends a HTTP request and returns the response.
-The function has similar functionality and options as the [got](https://www.npmjs.com/package/got) NPM package,
+
+Sends a HTTP request and returns the response. This package is used it (Apify SDK)[https://www.npmjs.com/package/apify] instead of the old (request)[https://www.npmjs.com/package/request]
+NPM package. Implements a tunnel agent error fix, better proxy agents and supports `brotli` compression. Fixed `deflate` compression.
+
+The function has similar functionality and has nearly the same options as the [got](https://www.npmjs.com/package/got) NPM package,
  but it brings several additional improvements and fixes:
 
  *  It support not only Gzip compression, but also Brotli and Deflate. To activate this feature,
   simply add `Accept-Encoding: gzip, deflate, br` to `options.headers` (or a combination) and set `options.useBrotli` to true.
  * Enables abortion of the request based on the response headers, before the data is downloaded.
- See `options.abortFunction` parameter.
+ See `options.abortFunction` parameter. 
+  * Tunnel agent error fix
+  * Fixed old deflate compression.
+  * Brotli support for Node.js <v12
+
+## Example Usage
  
- ## Example Usage
+### Get decoded and decompressed response
  
- ### Get decoded and decompressed response
   ```javascript
+     const httpRequest = require("@apify/http-request");
+  
      const {headers, body, statusCode} =  await httpRequest({ url: 'https://api.apify.com/v2/browser-info'});
+ 
  ```
  
- ### Get JSON from API
- ```javascript
+## Get JSON from API
+ 
+```javascript
+    const httpRequest = require("@apify/http-request");
+
     const {headers, body, statusCode} =  await httpRequest({ url: 'https://api.apify.com/v2/browser-info', json: true });
+
 ```
 
 ### Stream the response
- ```javascript
-     const responseStream =  await httpRequest({ url: 'https://apify.com', stream: true});
+```javascript
+     const httpRequest = require("@apify/http-request");
 
+     const responseStream =  await httpRequest({ url: 'https://apify.com', stream: true});
 ```
 
 ## API Documentation
 
 It's a `GET` request by default, but can be changed by using different methods or via `options.method`.
 
-#### httpRequest([options])
+### httpRequest([options])
 
 Returns a Promise for a [`response` object](#response) or a [stream](#streams-1) if `options.stream` is set to true.
 
@@ -100,13 +115,13 @@ If set to true decompressed stream is returned.
 Default value is `false`
 
 #### options.useBrotli
-If set to true Brotli decompression is enabled. You must have the peer dependency `iltorb`
+If set to true Brotli decompression is enabled. Brotli has a Node.js native support from `V10.16.0`. If you use older version you must have the peer dependency `iltorb` installed.
 
 Default value is `false`
 
 ### Response
  Promise\<object\> - The response object will typically be a
  * [Node.js HTTP response stream](https://nodejs.org/api/http.html#http_class_http_incomingmessage),
- * however, if returned from the cache it will be a [response-like object](https://github.com/lukechilds/responselike) which behaves in the same way.
+ however, if returned from the cache it will be a [response-like object](https://github.com/lukechilds/responselike) which behaves in the same way.
 
 For more information please see original npm package - [got](https://www.npmjs.com/package/got).
