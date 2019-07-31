@@ -32,7 +32,7 @@ function monkeyPatchHeaders(options) {
         if (foundHeader) {
             return foundHeader;
         }
-        return name.toLowerCase();
+        return name;
     };
 
     // Node.Js V8 handles the headers in a different way.
@@ -59,15 +59,15 @@ function monkeyPatchHeaders(options) {
         this[outHeadersKey][key] = [key, value];
 
             switch (key.length) { //eslint-disable-line
-        case 10:
-            if (key === 'connection') this._removedConnection = false;
-            break;
-        case 14:
-            if (key === 'content-length') this._removedContLen = false;
-            break;
-        case 17:
-            if (key === 'transfer-encoding') this._removedTE = false;
-            break;
+            case 10:
+                if (key === 'connection') this._removedConnection = false;
+                break;
+            case 14:
+                if (key === 'content-length') this._removedContLen = false;
+                break;
+            case 17:
+                if (key === 'transfer-encoding') this._removedTE = false;
+                break;
         }
     };
 }
