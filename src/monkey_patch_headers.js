@@ -32,7 +32,7 @@ function monkeyPatchHeaders(options) {
         if (foundHeader) {
             return foundHeader;
         }
-        return name.toLowerCase();
+        return name;
     };
 
     // Node.Js V8 handles the headers in a different way.

@@ -84,9 +84,11 @@ Default value is `30`.
 #### options.proxyUrl
 An HTTP proxy to be used. Supports proxy authentication with Basic Auth.
  
-#### options.ignoreSslErrors=false
-If `true`, requires SSL/TLS certificates to be valid.
+#### options.ignoreSslErrors
 
+If false, requires SSL/TLS certificates to be valid
+
+Default value is `false`
 #### options.abortFunction
 A function that determines whether the request should be aborted. It is called when the server
 responds with the HTTP headers, but before the actual data is downloaded.

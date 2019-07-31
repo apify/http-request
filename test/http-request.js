@@ -466,4 +466,25 @@ describe('httpRequest', () => {
         expect(body2.includes('Host')).to.be.eql(false);
         expect(body2.includes('User-Agent')).to.be.eql(false);
     });
+
+    it('Headers should have uniqueValues with useCaseSensitive headers', async () => {
+        const options = {
+            url: `http://${HOST}:${port}/rawHeaders`,
+            json: true,
+            useCaseSensitiveHeaders: true,
+            headers: {
+                'User-Agent': 'Test',
+                Host: HOST,
+                host: HOST,
+                'user-agent': 'TEST',
+            },
+
+        };
+        const { body } = await httpRequest(options);
+
+        expect(body.includes('Host')).to.be.eql(true);
+        expect(body.includes('User-Agent')).to.be.eql(true);
+        expect(body.includes('user-agent')).to.be.eql(false);
+        expect(body.includes('host')).to.be.eql(false);
+    });
 });
