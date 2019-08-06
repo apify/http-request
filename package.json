@@ -1,6 +1,6 @@
 {
     "name": "@apify/http-request",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "description": "Wrapper of got package used across Apify",
     "main": "src/index.js",
     "scripts": {
@@ -22,7 +22,7 @@
     },
     "license": "ISC",
     "devDependencies": {
-        "@petrpatek/eslint-config-apify": "^1.0.0",
+        "@apify/eslint-config": "^0.0.3",
         "body-parser": "^1.19.0",
         "chai": "^4.2.0",
         "eslint": "^5.16.0",
@@ -38,8 +38,5 @@
         "got": "^9.6.0",
         "proxy-agent": "^3.1.0",
         "underscore": "^1.9.1"
-    },
-    "peerDependencies": {
-        "iltorb": "^2.4.2"
     }
 }

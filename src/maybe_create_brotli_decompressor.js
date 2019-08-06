@@ -21,7 +21,10 @@ module.exports = function maybeCreateBrotliDecompressor(response, useBrotli) {
         try {
             decompressor = require('iltorb').decompressStream(); // eslint-disable-line
         } catch (e) {
-            throw new Error('You must have iltorb peer dependency installed to use brotli decompression or use NodeJs v10.16.0+');
+            throw new Error('You must have the "iltorb" dependency installed to use brotli decompression or use NodeJS v10.16.0+. '
+                + 'We did not include iltorb in the installation because it sometimes failed to compile for users '
+                + 'on their machines and therefore created unnecessary friction for everyone using NodeJS v10.16.0'
+                + ' and above, where it\'s not needed because brotli algorithm has been included into NodeJS stdlib.');
         }
     }
 
