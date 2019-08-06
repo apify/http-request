@@ -18,19 +18,19 @@ function decompress(response, useBrotli) {
     let decompressor;
 
     switch (compression) {
-    case 'br':
-        decompressor = maybeCreateBrotliDecompressor(response, useBrotli);
-        break;
-    case 'deflate':
-        decompressor = inflate.createInflate();
-        break;
-    case 'gzip':
-        decompressor = zlib.createGunzip();
-        break;
-    case 'identity':
-        return response;
-    default:
-        throw new Error(`Invalid Content-Encoding header. Expected gzip, deflate or br, but received: ${compression}`);
+        case 'br':
+            decompressor = maybeCreateBrotliDecompressor(response, useBrotli);
+            break;
+        case 'deflate':
+            decompressor = inflate.createInflate();
+            break;
+        case 'gzip':
+            decompressor = zlib.createGunzip();
+            break;
+        case 'identity':
+            return response;
+        default:
+            throw new Error(`Invalid Content-Encoding header. Expected gzip, deflate or br, but received: ${compression}`);
     }
 
     return response.pipe(decompressor);
