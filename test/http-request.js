@@ -11,6 +11,7 @@ const multer = require('multer');
 const upload = multer();
 
 const httpRequest = require('../src/index');
+const readStreamToString = require('../src/read_stream_to_string');
 
 const CONTENT = 'CONTENT';
 const HOST = '127.0.0.1';
@@ -407,6 +408,21 @@ describe('httpRequest', () => {
 
         };
         const stream = await httpRequest(options);
+
+        // check for response properties.
+        expect(stream.statusCode).to.equal(200);
+        expect(stream.headers).to.exist; //eslint-disable-line
+        expect(stream.complete).exist; //eslint-disable-line
+        expect(stream.httpVersion).to.eql('1.1');
+        expect(stream.rawHeaders).to.exist; //eslint-disable-line
+        expect(stream.rawTrailers).to.exist; //eslint-disable-line
+        expect(stream.socket).to.exist; //eslint-disable-line
+        expect(stream.statusMessage).to.eql('OK');
+        expect(stream.trailers).to.exist; //eslint-disable-line
+        expect(stream.url).to.exist; //eslint-disable-line
+
+        const content = await readStreamToString(stream);
+        expect(content).to.eql(CONTENT);
         expect(stream.constructor.name).to.be.not.eql('Promise');
     });
 
