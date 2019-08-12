@@ -8,6 +8,7 @@ const readStreamToString = require('./read_stream_to_string');
 const { REQUEST_DEFAULT_OPTIONS } = require('./constants');
 const decompress = require('./decompress');
 const monkeyPatchHeaders = require('./monkey_patch_headers');
+const addResponsePropertiesToStream = require('./add_response_properties_to_stream');
 
 /**
  * Sends a HTTP request and returns the response.
@@ -173,7 +174,8 @@ module.exports = async (options) => {
 
 
                 if (stream) {
-                    return resolve(decompressedResponse);
+                    // Add http.IncomingMessage properties to decompress stream.
+                    return resolve(addResponsePropertiesToStream(decompressedResponse, res));
                 }
 
                 try {
