@@ -153,6 +153,8 @@ module.exports = async (options) => {
                 try {
                     shouldAbort = abortFunction && abortFunction(res);
                 } catch (e) {
+                    requestStream.destroy();
+                    res.destroy();
                     return reject(e);
                 }
 

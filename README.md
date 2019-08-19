@@ -93,7 +93,8 @@ Default value is `false`
 A function that determines whether the request should be aborted. It is called when the server
 responds with the HTTP headers, but before the actual data is downloaded.
 class and it should return `true` if request should be aborted, or `false` otherwise.
-It won't work if you have the `options.stream` set to true.
+You can also throw custom error inside the `options.abortFunction`. 
+In this case, `httpRequest` aborts the request and throws your custom error.
 
 Default value is `null`.
 #### options.throwHttpErrors

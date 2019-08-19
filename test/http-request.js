@@ -483,7 +483,7 @@ describe('httpRequest', () => {
         expect(body2.includes('User-Agent')).to.be.eql(false);
     });
 
-    it('Headers should have uniqueValues with useCaseSensitive headers', async () => {
+    it('headers should have uniqueValues with useCaseSensitive headers', async () => {
         const options = {
             url: `http://${HOST}:${port}/rawHeaders`,
             json: true,
@@ -502,5 +502,28 @@ describe('httpRequest', () => {
         expect(body.includes('User-Agent')).to.be.eql(true);
         expect(body.includes('user-agent')).to.be.eql(false);
         expect(body.includes('host')).to.be.eql(false);
+    });
+
+    it('gets rejected with error thrown from abort function ', async () => {
+        class MyError extends Error {
+
+        }
+        const testError = new MyError('TEST');
+
+        const options = {
+            url: `http://${HOST}:${port}/rawHeaders`,
+            abortFunction: () => {
+                throw testError;
+            },
+        };
+        let error;
+        try {
+            await httpRequest(options);
+        } catch (e) {
+            error = e;
+        }
+
+        expect(error.message).to.be.eql(testError.message);
+        expect(error instanceof MyError).to.be.eql(true);
     });
 });
