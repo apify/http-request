@@ -94,7 +94,7 @@ A function that determines whether the request should be aborted. It is called w
 responds with the HTTP headers, but before the actual data is downloaded.
 class and it should return `true` if request should be aborted, or `false` otherwise.
 You can also throw custom error inside the `options.abortFunction`. 
-In this case, it aborts the request and throws your custom error.
+In this case, `httpRequest` aborts the request and throws your custom error.
 
 Default value is `null`.
 #### options.throwHttpErrors
