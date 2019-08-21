@@ -3,12 +3,14 @@ const _ = require('underscore');
 const ProxyAgent = require('proxy-agent');
 
 const http = require('http');
+const { PassThrough } = require('stream');
 const RequestError = require('./request_error');
 const readStreamToString = require('./read_stream_to_string');
 const { REQUEST_DEFAULT_OPTIONS } = require('./constants');
 const decompress = require('./decompress');
 const monkeyPatchHeaders = require('./monkey_patch_headers');
 const addResponsePropertiesToStream = require('./add_response_properties_to_stream');
+
 
 /**
  * Sends a HTTP request and returns the response.
@@ -113,6 +115,7 @@ module.exports = async (options) => {
         throwHttpErrors: false,
         stream: true,
         decompress: false,
+        retry: { retries: 0, maxRetryAfter: 0 },
     };
 
     if (json && !decodeBody) {
@@ -176,8 +179,11 @@ module.exports = async (options) => {
 
 
                 if (stream) {
+                    // Stream need to piped to PassThrough to stay readable
+                    const passThrough = new PassThrough();
+
                     // Add http.IncomingMessage properties to decompress stream.
-                    return resolve(addResponsePropertiesToStream(decompressedResponse, res));
+                    return resolve(addResponsePropertiesToStream(decompressedResponse.pipe(passThrough), res));
                 }
 
                 try {
@@ -203,6 +209,6 @@ module.exports = async (options) => {
                 }
 
                 return resolve(res);
-            }).resume();
+            });
     });
 };
