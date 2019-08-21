@@ -180,10 +180,12 @@ module.exports = async (options) => {
 
                 if (stream) {
                     // Stream need to piped to PassThrough to stay readable
-                    const passThrough = new PassThrough();
-
+                    const passThrough = new PassThrough({ highWaterMark: 5 });
+                    decompressedResponse.pipe(passThrough);
                     // Add http.IncomingMessage properties to decompress stream.
-                    return resolve(addResponsePropertiesToStream(decompressedResponse.pipe(passThrough), res));
+                    const streamWithResponseAttributes = addResponsePropertiesToStream(passThrough, res);
+
+                    return resolve(streamWithResponseAttributes);
                 }
 
                 try {
