@@ -40,7 +40,7 @@ function monkeyPatchHeaders(options) {
     // Node.Js V8 handles the headers in a different way.
     if (nodeVersion <= 8.10) {
         return function (name, value) {
-            const outHeadersKey = findOutHeadersSymbol();
+            const outHeadersKey = findOutHeadersSymbol(symbolName);
             let headers = this[outHeadersKey];
             if (headers === null) {
                 this[outHeadersKey] = headers = Object.create(null); // eslint-disable-line
@@ -51,10 +51,10 @@ function monkeyPatchHeaders(options) {
         };
     }
 
-    if (nodeVersion < 12) {
+    if (nodeVersion <= 12.8) {
         // Version 10,9,11 handles the headers in a same way
         return function (name, value) {
-            const outHeadersKey = findOutHeadersSymbol();
+            const outHeadersKey = findOutHeadersSymbol(symbolName);
 
             if (!this[outHeadersKey]) this[outHeadersKey] = {};
 
