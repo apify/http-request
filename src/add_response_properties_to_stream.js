@@ -15,6 +15,7 @@ module.exports = function (stream, response) {
     stream.statusMessage = response.statusMessage;
     stream.trailers = response.trailers;
     stream.url = response.url;
+    stream.request = response.request;
 
     return stream;
 };

@@ -3,14 +3,15 @@ const http = require('http');
 
 /**
  * Function that finds a corresponding Symbol for headers.
+ * @param symbolName {String} - Name of the symbol
  * @return {symbol}
  */
-function findOutHeadersSymbol() {
+function findOutHeadersSymbol(symbolName) {
     const x = new http.OutgoingMessage();
     const s = Object.getOwnPropertySymbols(x);
     const symbol = s.find(sym => typeof sym === 'symbol'
-        && sym.toString() === 'Symbol(outHeadersKey)');
-    assert(symbol.toString() === 'Symbol(outHeadersKey)');
+        && sym.toString() === `Symbol(${symbolName})`);
+    assert(symbol.toString() === `Symbol(${symbolName})`);
 
     return symbol;
 }
@@ -26,6 +27,7 @@ function findOutHeadersSymbol() {
 function monkeyPatchHeaders(options) {
     const keys = Object.keys(options.headers);
     const nodeVersion = Number(process.version.match(/^v(\d+\.\d+)/)[1]);
+    let symbolName = 'outHeadersKey';
 
     const getKey = (name) => {
         const foundHeader = keys.find(header => header.toLowerCase() === name);
@@ -38,7 +40,7 @@ function monkeyPatchHeaders(options) {
     // Node.Js V8 handles the headers in a different way.
     if (nodeVersion <= 8.10) {
         return function (name, value) {
-            const outHeadersKey = findOutHeadersSymbol();
+            const outHeadersKey = findOutHeadersSymbol(symbolName);
             let headers = this[outHeadersKey];
             if (headers === null) {
                 this[outHeadersKey] = headers = Object.create(null); // eslint-disable-line
@@ -49,26 +51,41 @@ function monkeyPatchHeaders(options) {
         };
     }
 
-    // Version 10.16+ handles the headers in a same way
-    return function (name, value) {
-        const outHeadersKey = findOutHeadersSymbol();
+    if (nodeVersion <= 12.8) {
+        // Version 10,9,11 handles the headers in a same way
+        return function (name, value) {
+            const outHeadersKey = findOutHeadersSymbol(symbolName);
 
-        if (!this[outHeadersKey]) this[outHeadersKey] = {};
+            if (!this[outHeadersKey]) this[outHeadersKey] = {};
 
-        const key = getKey(name);
-        this[outHeadersKey][key] = [key, value];
+            const key = getKey(name);
+            this[outHeadersKey][key] = [key, value];
 
             switch (key.length) { //eslint-disable-line
-            case 10:
-                if (key === 'connection') this._removedConnection = false;
-                break;
-            case 14:
-                if (key === 'content-length') this._removedContLen = false;
-                break;
-            case 17:
-                if (key === 'transfer-encoding') this._removedTE = false;
-                break;
+                case 10:
+                    if (key === 'connection') this._removedConnection = false;
+                    break;
+                case 14:
+                    if (key === 'content-length') this._removedContLen = false;
+                    break;
+                case 17:
+                    if (key === 'transfer-encoding') this._removedTE = false;
+                    break;
+            }
+        };
+    }
+    // for version 12+
+    return function (name, value) {
+        symbolName = 'kOutHeaders';
+
+        const outHeadersKey = findOutHeadersSymbol(symbolName);
+        if (this[outHeadersKey] === null) {
+            this[outHeadersKey] = Object.create(null);
         }
+        const key = getKey(name);
+
+
+        this[outHeadersKey][key] = [key, value];
     };
 }
 
