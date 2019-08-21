@@ -3,14 +3,15 @@ const http = require('http');
 
 /**
  * Function that finds a corresponding Symbol for headers.
+ * @param symbolName {String} - Name of the symbol
  * @return {symbol}
  */
-function findOutHeadersSymbol() {
+function findOutHeadersSymbol(symbolName) {
     const x = new http.OutgoingMessage();
     const s = Object.getOwnPropertySymbols(x);
     const symbol = s.find(sym => typeof sym === 'symbol'
-        && sym.toString() === 'Symbol(outHeadersKey)');
-    assert(symbol.toString() === 'Symbol(outHeadersKey)');
+        && sym.toString() === `Symbol(${symbolName})`);
+    assert(symbol.toString() === `Symbol(${symbolName})`);
 
     return symbol;
 }
@@ -26,6 +27,7 @@ function findOutHeadersSymbol() {
 function monkeyPatchHeaders(options) {
     const keys = Object.keys(options.headers);
     const nodeVersion = Number(process.version.match(/^v(\d+\.\d+)/)[1]);
+    let symbolName = 'outHeadersKey';
 
     const getKey = (name) => {
         const foundHeader = keys.find(header => header.toLowerCase() === name);
@@ -74,16 +76,16 @@ function monkeyPatchHeaders(options) {
     }
     // for version 12+
     return function (name, value) {
-        const outHeadersKey = findOutHeadersSymbol();
-        let headers = this[outHeadersKey];
-        if (headers === null) {
+        symbolName = 'kOutHeaders';
+
+        const outHeadersKey = findOutHeadersSymbol(symbolName);
+        if (this[outHeadersKey] === null) {
             this[outHeadersKey] = Object.create(null);
-            headers = Object.create(null);
         }
         const key = getKey(name);
 
 
-        headers[name.toLowerCase()] = [key, value];
+        this[outHeadersKey][key] = [key, value];
     };
 }
 
