@@ -420,6 +420,9 @@ describe('httpRequest', () => {
         expect(stream.statusMessage).to.eql('OK');
         expect(stream.trailers).to.exist; //eslint-disable-line
         expect(stream.url).to.exist; //eslint-disable-line
+        expect(stream.request).to.exist; //eslint-disable-line
+        expect(stream.request.gotOptions).to.exist; //eslint-disable-line
+        expect(stream.request.gotOptions).to.exist; //eslint-disable-line
 
         const content = await readStreamToString(stream);
         expect(content).to.eql(CONTENT);
