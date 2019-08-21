@@ -49,26 +49,41 @@ function monkeyPatchHeaders(options) {
         };
     }
 
-    // Version 10.16+ handles the headers in a same way
-    return function (name, value) {
-        const outHeadersKey = findOutHeadersSymbol();
+    if (nodeVersion < 12) {
+        // Version 10,9,11 handles the headers in a same way
+        return function (name, value) {
+            const outHeadersKey = findOutHeadersSymbol();
 
-        if (!this[outHeadersKey]) this[outHeadersKey] = {};
+            if (!this[outHeadersKey]) this[outHeadersKey] = {};
 
-        const key = getKey(name);
-        this[outHeadersKey][key] = [key, value];
+            const key = getKey(name);
+            this[outHeadersKey][key] = [key, value];
 
             switch (key.length) { //eslint-disable-line
-            case 10:
-                if (key === 'connection') this._removedConnection = false;
-                break;
-            case 14:
-                if (key === 'content-length') this._removedContLen = false;
-                break;
-            case 17:
-                if (key === 'transfer-encoding') this._removedTE = false;
-                break;
+                case 10:
+                    if (key === 'connection') this._removedConnection = false;
+                    break;
+                case 14:
+                    if (key === 'content-length') this._removedContLen = false;
+                    break;
+                case 17:
+                    if (key === 'transfer-encoding') this._removedTE = false;
+                    break;
+            }
+        };
+    }
+    // for version 12+
+    return function (name, value) {
+        const outHeadersKey = findOutHeadersSymbol();
+        let headers = this[outHeadersKey];
+        if (headers === null) {
+            this[outHeadersKey] = Object.create(null);
+            headers = Object.create(null);
         }
+        const key = getKey(name);
+
+
+        headers[name.toLowerCase()] = [key, value];
     };
 }
 
