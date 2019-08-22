@@ -211,6 +211,6 @@ module.exports = async (options) => {
                 }
 
                 return resolve(res);
-            });
+            }).resume();
     });
 };

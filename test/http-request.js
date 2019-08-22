@@ -30,6 +30,13 @@ describe('httpRequest', () => {
     before(async () => {
         mochaListener = process.listeners('uncaughtException').shift();
         process.removeListener('uncaughtException', mochaListener);
+        const file = fs.createWriteStream('./bigFile.txt');
+
+        for (let i = 0; i <= 1e6; i++) {
+            file.write('Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\n'); //eslint-disable-line
+        }
+        file.end();
+
         const app = express();
         app.use(bodyParser.urlencoded({
             extended: true,
@@ -123,6 +130,11 @@ describe('httpRequest', () => {
             res.send(JSON.stringify(req.rawHeaders));
         });
 
+        app.get('/bigFile', (req, res) => {
+            const src = fs.createReadStream('./bigFile.txt');
+            src.pipe(res);
+        });
+
         server = await startExpressAppPromise(app, 0);
         port = server.address().port; //eslint-disable-line
     });
@@ -130,6 +142,7 @@ describe('httpRequest', () => {
     after(() => {
         server.close();
         process.on('uncaughtException', mochaListener);
+        fs.unlinkSync('./bigFile.txt');
     });
 
     it('Test multipart/form-data format support.', async () => { // multipart/form-data
@@ -528,5 +541,26 @@ describe('httpRequest', () => {
 
         expect(error.message).to.be.eql(testError.message);
         expect(error instanceof MyError).to.be.eql(true);
+    });
+
+    it('can read a large response using stream API', async () => {
+        const options = {
+            url: `http://${HOST}:${port}/bigFile`,
+            stream: true,
+        };
+        const response = await httpRequest(options);
+
+        const body = await readStreamToString(response);
+        expect(body).to.exist; // eslint-disable-line
+    });
+
+    it('can read a large response using promise API', async () => {
+        const options = {
+            url: `http://${HOST}:${port}/bigFile`,
+            stream: false,
+        };
+        const response = await httpRequest(options);
+
+        expect(response.body).to.exist; // eslint-disable-line
     });
 });
