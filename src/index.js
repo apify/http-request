@@ -2,14 +2,13 @@ const got = require('got');
 const _ = require('underscore');
 const ProxyAgent = require('proxy-agent');
 
-const http = require('http');
 const { PassThrough } = require('stream');
 const RequestError = require('./request_error');
 const readStreamToString = require('./read_stream_to_string');
 const { REQUEST_DEFAULT_OPTIONS } = require('./constants');
 const decompress = require('./decompress');
-const monkeyPatchHeaders = require('./monkey_patch_headers');
 const addResponsePropertiesToStream = require('./add_response_properties_to_stream');
+const createCaseSensitiveHook = require("./create_case_sensitive_hook");
 
 
 /**
@@ -78,7 +77,6 @@ const addResponsePropertiesToStream = require('./add_response_properties_to_stre
 
  * @name httpRequest
  */
-let oldSetHeader;
 
 module.exports = async (options) => {
     const opts = _.defaults({}, options, REQUEST_DEFAULT_OPTIONS);
@@ -116,6 +114,9 @@ module.exports = async (options) => {
         stream: true,
         decompress: false,
         retry: { retries: 0, maxRetryAfter: 0 },
+        hooks: {
+            beforeRequest: [],
+        },
     };
 
     if (json && !decodeBody) {
@@ -136,8 +137,7 @@ module.exports = async (options) => {
     }
 
     if (useCaseSensitiveHeaders) {
-        oldSetHeader = http.OutgoingMessage.prototype.setHeader;
-        http.OutgoingMessage.prototype.setHeader = monkeyPatchHeaders(requestOptions);
+        requestOptions.hooks.beforeRequest.push(createCaseSensitiveHook(requestOptions));
     }
 
     return new Promise((resolve, reject) => {
@@ -206,9 +206,6 @@ module.exports = async (options) => {
                 }
 
                 res.body = body;
-                if (useCaseSensitiveHeaders) {
-                    http.OutgoingMessage.prototype.setHeader = oldSetHeader;
-                }
 
                 return resolve(res);
             }).resume();

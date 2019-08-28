@@ -195,8 +195,9 @@ describe('httpRequest', () => {
             method: 'POST',
             parseBody: false,
             decodeBody: true,
+            useCaseSensitiveHeaders: false,
             headers: {
-                'content-type': 'application/json',
+                'Content-Type': 'application/json',
             },
         };
         const response = await httpRequest(options);
@@ -476,7 +477,7 @@ describe('httpRequest', () => {
         expect(rejectedError.message).to.be.eql('Could not parse the body');
     });
 
-    it('monkey patched headers work as expected', async () => {
+    it('headers work as expected', async () => {
         const options = {
             url: `http://${HOST}:${port}/rawHeaders`,
             json: true,
