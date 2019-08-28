@@ -8,7 +8,7 @@ const readStreamToString = require('./read_stream_to_string');
 const { REQUEST_DEFAULT_OPTIONS } = require('./constants');
 const decompress = require('./decompress');
 const addResponsePropertiesToStream = require('./add_response_properties_to_stream');
-const createCaseSensitiveHook = require("./create_case_sensitive_hook");
+const createCaseSensitiveHook = require('./create_case_sensitive_hook');
 
 
 /**
