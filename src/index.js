@@ -177,6 +177,8 @@ module.exports = async (options) => {
                     decompressedResponse = res;
                 }
 
+                // Error handler for decompress stream
+                decompressedResponse.on('error', error => reject(error));
 
                 if (stream) {
                     // Stream need to piped to PassThrough to stay readable
