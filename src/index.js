@@ -1,5 +1,4 @@
 const got = require('got');
-const _ = require('underscore');
 const ProxyAgent = require('proxy-agent');
 
 const { PassThrough } = require('stream');
@@ -79,31 +78,29 @@ const createCaseSensitiveHook = require('./create_case_sensitive_hook');
  */
 
 module.exports = async (options) => {
-    const opts = _.defaults({}, options, REQUEST_DEFAULT_OPTIONS);
-
     const {
         url,
-        method = 'GET',
-        headers = {},
-        followRedirect = true,
-        maxRedirects = 20,
-        throwOnHttpErrors = false,
-        abortFunction = null,
-        timeoutSecs = 30,
-        ignoreSslErrors = false,
-        decodeBody = true,
-        json = false,
-        stream = false,
-        useBrotli = false,
+        method = REQUEST_DEFAULT_OPTIONS.method,
+        headers = REQUEST_DEFAULT_OPTIONS.headers,
+        followRedirect = REQUEST_DEFAULT_OPTIONS.followRedirect,
+        maxRedirects = REQUEST_DEFAULT_OPTIONS.maxRedirects,
+        throwOnHttpErrors = REQUEST_DEFAULT_OPTIONS.throwHttpErrors,
+        abortFunction = REQUEST_DEFAULT_OPTIONS.abortFunction,
+        timeoutSecs = REQUEST_DEFAULT_OPTIONS.timeoutSecs,
+        ignoreSslErrors = REQUEST_DEFAULT_OPTIONS.ignoreSslErrors,
+        decodeBody = REQUEST_DEFAULT_OPTIONS.decodeBody,
+        json = REQUEST_DEFAULT_OPTIONS.json,
+        stream = REQUEST_DEFAULT_OPTIONS.stream,
+        useBrotli = REQUEST_DEFAULT_OPTIONS.useBrotli,
         proxyUrl,
         payload,
         useCaseSensitiveHeaders,
-    } = opts;
+    } = options;
 
     const requestOptions = {
         url,
         method,
-        headers: _.defaults(headers, { 'Accept-Encoding': `gzip, deflate${useBrotli ? ', br' : ''}` }),
+        headers: Object.assign({}, headers, { 'Accept-Encoding': `gzip, deflate${useBrotli ? ', br' : ''}` }),
         followRedirect,
         maxRedirects,
         timeout: timeoutSecs * 1000,
@@ -133,7 +130,7 @@ module.exports = async (options) => {
     }
 
     if (json) {
-        requestOptions.headers = _.defaults(requestOptions.headers, { 'Content-Type': 'application/json' });
+        requestOptions.headers = Object.assign({}, requestOptions.headers, { 'Content-Type': 'application/json' });
     }
 
     if (useCaseSensitiveHeaders) {
