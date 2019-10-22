@@ -3,8 +3,8 @@ const _ = require('underscore');
 const ProxyAgent = require('proxy-agent');
 
 const { PassThrough } = require('stream');
+const { readStreamToString } = require('apify-shared/streams_utilities');
 const RequestError = require('./request_error');
-const readStreamToString = require('./read_stream_to_string');
 const { REQUEST_DEFAULT_OPTIONS } = require('./constants');
 const decompress = require('./decompress');
 const addResponsePropertiesToStream = require('./add_response_properties_to_stream');
