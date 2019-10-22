@@ -10,8 +10,8 @@ const multer = require('multer');
 
 const upload = multer();
 
+const { readStreamToString } = require('apify-shared/streams_utilities');
 const httpRequest = require('../src/index');
-const readStreamToString = require('../src/read_stream_to_string');
 
 const CONTENT = 'CONTENT';
 const HOST = '127.0.0.1';
