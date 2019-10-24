@@ -1,11 +1,9 @@
 const got = require('got');
-const _ = require('underscore');
 const ProxyAgent = require('proxy-agent');
 
 const { PassThrough } = require('stream');
+const { readStreamToString } = require('apify-shared/streams_utilities');
 const RequestError = require('./request_error');
-const readStreamToString = require('./read_stream_to_string');
-const { REQUEST_DEFAULT_OPTIONS } = require('./constants');
 const decompress = require('./decompress');
 const addResponsePropertiesToStream = require('./add_response_properties_to_stream');
 const createCaseSensitiveHook = require('./create_case_sensitive_hook');
@@ -79,8 +77,6 @@ const createCaseSensitiveHook = require('./create_case_sensitive_hook');
  */
 
 module.exports = async (options) => {
-    const opts = _.defaults({}, options, REQUEST_DEFAULT_OPTIONS);
-
     const {
         url,
         method = 'GET',
@@ -98,12 +94,12 @@ module.exports = async (options) => {
         proxyUrl,
         payload,
         useCaseSensitiveHeaders,
-    } = opts;
+    } = options;
 
     const requestOptions = {
         url,
         method,
-        headers: _.defaults(headers, { 'Accept-Encoding': `gzip, deflate${useBrotli ? ', br' : ''}` }),
+        headers: Object.assign({}, headers, { 'Accept-Encoding': `gzip, deflate${useBrotli ? ', br' : ''}` }),
         followRedirect,
         maxRedirects,
         timeout: timeoutSecs * 1000,
@@ -133,7 +129,7 @@ module.exports = async (options) => {
     }
 
     if (json) {
-        requestOptions.headers = _.defaults(requestOptions.headers, { 'Content-Type': 'application/json' });
+        requestOptions.headers = Object.assign({}, requestOptions.headers, { 'Content-Type': 'application/json' });
     }
 
     if (useCaseSensitiveHeaders) {
