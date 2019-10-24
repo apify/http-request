@@ -4,7 +4,6 @@ const ProxyAgent = require('proxy-agent');
 const { PassThrough } = require('stream');
 const { readStreamToString } = require('apify-shared/streams_utilities');
 const RequestError = require('./request_error');
-const { REQUEST_DEFAULT_OPTIONS } = require('./constants');
 const decompress = require('./decompress');
 const addResponsePropertiesToStream = require('./add_response_properties_to_stream');
 const createCaseSensitiveHook = require('./create_case_sensitive_hook');
@@ -80,18 +79,18 @@ const createCaseSensitiveHook = require('./create_case_sensitive_hook');
 module.exports = async (options) => {
     const {
         url,
-        method = REQUEST_DEFAULT_OPTIONS.method,
-        headers = REQUEST_DEFAULT_OPTIONS.headers,
-        followRedirect = REQUEST_DEFAULT_OPTIONS.followRedirect,
-        maxRedirects = REQUEST_DEFAULT_OPTIONS.maxRedirects,
-        throwOnHttpErrors = REQUEST_DEFAULT_OPTIONS.throwHttpErrors,
-        abortFunction = REQUEST_DEFAULT_OPTIONS.abortFunction,
-        timeoutSecs = REQUEST_DEFAULT_OPTIONS.timeoutSecs,
-        ignoreSslErrors = REQUEST_DEFAULT_OPTIONS.ignoreSslErrors,
-        decodeBody = REQUEST_DEFAULT_OPTIONS.decodeBody,
-        json = REQUEST_DEFAULT_OPTIONS.json,
-        stream = REQUEST_DEFAULT_OPTIONS.stream,
-        useBrotli = REQUEST_DEFAULT_OPTIONS.useBrotli,
+        method = 'GET',
+        headers = {},
+        followRedirect = true,
+        maxRedirects = 20,
+        throwOnHttpErrors = false,
+        abortFunction = null,
+        timeoutSecs = 30,
+        ignoreSslErrors = false,
+        decodeBody = true,
+        json = false,
+        stream = false,
+        useBrotli = false,
         proxyUrl,
         payload,
         useCaseSensitiveHeaders,
