@@ -94,9 +94,11 @@ module.exports = async (options) => {
         proxyUrl,
         payload,
         useCaseSensitiveHeaders,
+        ...possibleGotOptions // Such as cookieJar.
     } = options;
 
     const requestOptions = {
+        ...possibleGotOptions, // Add it first to be overridden in case of conflict.
         url,
         method,
         headers: Object.assign({}, headers, { 'Accept-Encoding': `gzip, deflate${useBrotli ? ', br' : ''}` }),
