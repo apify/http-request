@@ -435,8 +435,7 @@ describe('httpRequest', () => {
         expect(stream.trailers).to.exist; //eslint-disable-line
         expect(stream.url).to.exist; //eslint-disable-line
         expect(stream.request).to.exist; //eslint-disable-line
-        expect(stream.request.gotOptions).to.exist; //eslint-disable-line
-        expect(stream.request.gotOptions).to.exist; //eslint-disable-line
+        expect(stream.request.options).to.exist; //eslint-disable-line
 
         const content = await readStreamToString(stream);
         expect(content).to.eql(CONTENT);
@@ -489,6 +488,7 @@ describe('httpRequest', () => {
 
         };
         const { body } = await httpRequest(options);
+        console.log(body);
 
         expect(body.includes('Host')).to.be.eql(true);
         expect(body.includes('User-Agent')).to.be.eql(true);

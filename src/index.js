@@ -107,9 +107,8 @@ module.exports = async (options) => {
         timeout: timeoutSecs * 1000,
         rejectUnauthorized: !ignoreSslErrors,
         body: payload,
-        json,
         throwHttpErrors: false,
-        stream: true,
+        isStream: true,
         decompress: false,
         retry: { retries: 0, maxRetryAfter: 0 },
         hooks: {
