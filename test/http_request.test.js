@@ -1,4 +1,3 @@
-const { expect } = require('chai');
 const zlib = require('zlib');
 const express = require('express');
 const bodyParser = require('body-parser');
@@ -7,6 +6,7 @@ const { compress } = require('iltorb');
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
+const ProxyChain = require('proxy-chain');
 
 const upload = multer();
 
@@ -27,9 +27,8 @@ describe('httpRequest', () => {
     let mochaListener;
     let port;
     let server;
-    before(async () => {
-        mochaListener = process.listeners('uncaughtException').shift();
-        process.removeListener('uncaughtException', mochaListener);
+
+    beforeAll(async () => {
         const file = fs.createWriteStream('./bigFile.txt');
 
         for (let i = 0; i <= 1e6; i++) {
@@ -139,14 +138,14 @@ describe('httpRequest', () => {
         port = server.address().port; //eslint-disable-line
     });
 
-    after(() => {
+    afterAll(() => {
         server.close();
         process.on('uncaughtException', mochaListener);
         fs.unlinkSync('./bigFile.txt');
     });
 
-    it('Test multipart/form-data format support.', async () => { // multipart/form-data
-        const fileName = 'http-request.js';
+    test('Test multipart/form-data format support.', async () => { // multipart/form-data
+        const fileName = 'http_request.test.js';
         const filePath = path.join(__dirname, fileName);
         const form = new FormData();
 
@@ -161,12 +160,12 @@ describe('httpRequest', () => {
         };
         const response = await httpRequest(opts);
         const body = JSON.parse(response.body);
-        expect(response.statusCode).to.be.eql(200);
-        expect(body.mimetype).to.be.eql('application/javascript');
-        expect(body.fieldname).to.be.eql('file');
+        expect(response.statusCode).toBe(200);
+        expect(body.mimetype).toBe('application/javascript');
+        expect(body.fieldname).toBe('file');
     });
 
-    it('throws error when decode body is false and parse body is true', async () => {
+    test('throws error when decode body is false and parse body is true', async () => {
         const data = {
             url: `http://${HOST}:${port}/gzip`,
             decodeBody: false,
@@ -181,11 +180,11 @@ describe('httpRequest', () => {
             error = e;
         }
 
-        expect(error.message).to.be.eql('If the "json" parameter is true, "decodeBody" must be also true.');
+        expect(error.message).toBe('If the "json" parameter is true, "decodeBody" must be also true.');
     });
 
 
-    it('sends payload', async () => {
+    test('sends payload', async () => {
         const payload = JSON.stringify({
             TEST: 'TEST',
         });
@@ -202,23 +201,16 @@ describe('httpRequest', () => {
         };
         const response = await httpRequest(options);
 
-        expect(response.body).to.be.eql(payload);
+        expect(response.body).toEqual(payload);
     });
 
-    it('uses proxy (proxyUrl)', async () => {
-        const proxy = 'http://groups-SHADER,session-airbnb_44042475:rgC8JJ8NcrDnDdwsxDqWz7jKS@proxy.apify.com:8000';
-        const { body } = await httpRequest({ url: 'https://api.apify.com/v2/browser-info', json: true });
-        const { body: proxyBody } = await httpRequest({ url: 'https://api.apify.com/v2/browser-info', proxyUrl: proxy, json: true });
-        expect(body.clientIp).to.be.not.eql(proxyBody.clientIp);
-    });
-
-    it('decompress deflateRaw when content-encoding is deflate', async () => {
+    test('decompress deflateRaw when content-encoding is deflate', async () => {
         const { body } = await httpRequest({ url: `http://${HOST}:${port}/deflate-raw` });
-        expect(body).to.be.eql(CONTENT);
+        expect(body).toEqual(CONTENT);
     });
 
 
-    it('has timeout parameter working', async () => {
+    test('has timeout parameter working', async () => {
         const waitTime = 1000;
         const options = {
             url: `http://${HOST}:${port}/timeout?timeout=${waitTime}`,
@@ -232,40 +224,40 @@ describe('httpRequest', () => {
             error = e;
         }
         const end = Date.now();
-        expect((end - start) > waitTime).to.eql(false);
-        expect(error.message.includes("Timeout awaiting 'request'")).to.be.eql(true);
+        expect((end - start) > waitTime).toBe(false);
+        expect(error.message.includes("Timeout awaiting 'request'")).toBe(true);
     });
 
-    it('has valid return value', async () => {
+    test('has valid return value', async () => {
         const response = await httpRequest({ url: `http://${HOST}:${port}/echo`, parseBody: false });
-        expect(response).to.have.property('body');
-        expect(response).to.have.property('statusCode');
-        expect(response).to.have.property('headers');
-        expect(response).to.have.property('request');
+        expect(response).toHaveProperty('body');
+        expect(response).toHaveProperty('statusCode');
+        expect(response).toHaveProperty('headers');
+        expect(response).toHaveProperty('request');
     });
 
-    it('catches SSL Errors', async () => {
+    test('catches SSL Errors', async () => {
         let error;
         try {
             await httpRequest({ url: 'https://self-signed.badssl.com/', ignoreSslErrors: false });
         } catch (e) {
             error = e;
         }
-        expect(error).to.not.be.undefined; // eslint-disable-line
+        expect(error).toBeDefined(); // eslint-disable-line
     });
 
-    it('ignores SSL Errors', async () => {
+    test('ignores SSL Errors', async () => {
         let error;
         try {
             await httpRequest({ url: 'https://self-signed.badssl.com/', ignoreSslErrors: true });
         } catch (e) {
             error = e;
         }
-        expect(error).to.be.undefined; // eslint-disable-line
+        expect(error).toBeUndefined(); // eslint-disable-line
     });
 
 
-    it('passes response to abortFunction', async () => {
+    test('passes response to abortFunction', async () => {
         let constructorName;
         const data = {
             url: `http://${HOST}:${port}/gzip`,
@@ -278,26 +270,29 @@ describe('httpRequest', () => {
 
         await httpRequest(data);
 
-        expect(constructorName).to.be.eql('Transform');
+        expect(constructorName).toBe('Transform');
     });
 
-    it('it does not aborts request when aborts function returns false', async () => {
-        let aborted = false;
-        const data = {
-            url: `http://${HOST}:${port}/gzip`,
-            abortFunction: (response) => {
-                response.on('aborted', () => {
-                    aborted = true;
-                });
-                return false;
-            },
+    test(
+        'it does not aborts request when aborts function returns false',
+        async () => {
+            let aborted = false;
+            const data = {
+                url: `http://${HOST}:${port}/gzip`,
+                abortFunction: (response) => {
+                    response.on('aborted', () => {
+                        aborted = true;
+                    });
+                    return false;
+                },
 
-        };
-        await httpRequest(data);
-        expect(aborted).to.be.eql(false);
-    });
+            };
+            await httpRequest(data);
+            expect(aborted).toBe(false);
+        },
+    );
 
-    it('it aborts request', async () => {
+    test('it aborts request', async () => {
         const data = {
             url: `http://${HOST}:${port}/gzip`,
             abortFunction: () => {
@@ -314,10 +309,10 @@ describe('httpRequest', () => {
             error = e;
         }
 
-        expect(error.message).to.be.eql(`Request for ${data.url} aborted due to abortFunction`);
+        expect(error.message).toEqual(`Request for ${data.url} aborted due to abortFunction`);
     });
 
-    it('decompress gzip', async () => {
+    test('decompress gzip', async () => {
         const options = {
             url: `http://${HOST}:${port}/gzip`,
             parseBody: false,
@@ -325,12 +320,10 @@ describe('httpRequest', () => {
         };
 
         const response = await httpRequest(options);
-        expect(response.body)
-            .to
-            .eql(CONTENT);
+        expect(response.body).toEqual(CONTENT);
     });
 
-    it('decompress deflate', async () => {
+    test('decompress deflate', async () => {
         const options = {
             url: `http://${HOST}:${port}/deflate`,
             parseBody: false,
@@ -338,12 +331,10 @@ describe('httpRequest', () => {
         };
 
         const response = await httpRequest(options);
-        expect(response.body)
-            .to
-            .eql(CONTENT);
+        expect(response.body).toEqual(CONTENT);
     });
 
-    it('decompress brotli', async () => {
+    test('decompress brotli', async () => {
         const options = {
             url: `http://${HOST}:${port}/brotli`,
             parseBody: false,
@@ -352,55 +343,64 @@ describe('httpRequest', () => {
         };
 
         const response = await httpRequest(options);
-        expect(response.body).to.eql(CONTENT);
+        expect(response.body).toEqual(CONTENT);
     });
 
-    it('it does not throw error for 400+ error codes when throwOnHttpError is false', async () => {
-        const options = {
-            url: `http://${HOST}:${port}/500`,
-        };
-        let error;
-        try {
-            await httpRequest(options);
-        } catch (e) {
-            error = e;
-        }
-            expect(error).to.be.undefined; // eslint-disable-line
-    });
+    test(
+        'it does not throw error for 400+ error codes when throwOnHttpError is false',
+        async () => {
+            const options = {
+                url: `http://${HOST}:${port}/500`,
+            };
+            let error;
+            try {
+                await httpRequest(options);
+            } catch (e) {
+                error = e;
+            }
+                expect(error).toBeUndefined(); // eslint-disable-line
+        },
+    );
 
-    it('it does throw error for 400+ error codes when throwOnHttpErrors is true', async () => {
-        const options = {
-            url: `http://${HOST}:${port}/500`,
-            throwOnHttpErrors: true,
+    test(
+        'it does throw error for 400+ error codes when throwOnHttpErrors is true',
+        async () => {
+            const options = {
+                url: `http://${HOST}:${port}/500`,
+                throwOnHttpErrors: true,
 
-        };
-        let error;
+            };
+            let error;
 
-        try {
-            await httpRequest(options);
-        } catch (e) {
-            error = e;
-        }
+            try {
+                await httpRequest(options);
+            } catch (e) {
+                error = e;
+            }
 
-        expect(error.message).to.exist; // eslint-disable-line
-    });
+            expect(error.message).toBeDefined(); // eslint-disable-line
+        },
+    );
 
-    it('it throws error when the body cannot be parsed and the code is 500 when throwOnHttpErrors is true', async () => {
-        const options = {
-            url: `http://${HOST}:${port}/500/invalidBody`,
-            throwOnHttpErrors: true,
+    test(
+        'it throws error when the body cannot be parsed and the code is 500 when throwOnHttpErrors is true',
+        async () => {
+            const options = {
+                url: `http://${HOST}:${port}/500/invalidBody`,
+                throwOnHttpErrors: true,
 
-        };
-        let error;
-        try {
-            await httpRequest(options);
-        } catch (e) {
-            error = e;
-        }
-            expect(error.message).to.exist; // eslint-disable-line
-    });
+            };
+            let error;
+            try {
+                await httpRequest(options);
+            } catch (e) {
+                error = e;
+            }
+                expect(error.message).toBeDefined(); // eslint-disable-line
+        },
+    );
 
-    it('it throws error when the body cannot be parsed', async () => {
+    test('it throws error when the body cannot be parsed', async () => {
         const options = {
             url: `http://${HOST}:${port}/invalidBody`,
             json: true,
@@ -412,10 +412,10 @@ describe('httpRequest', () => {
         } catch (e) {
             error = e;
         }
-            expect(error.message).to.exist; // eslint-disable-line
+            expect(error.message).toBeDefined(); // eslint-disable-line
     });
 
-    it('it returns stream when stream is set to true', async () => {
+    test('it returns stream when stream is set to true', async () => {
         const options = {
             url: `http://${HOST}:${port}/gzip`,
             stream: true,
@@ -424,45 +424,48 @@ describe('httpRequest', () => {
         const stream = await httpRequest(options);
 
         // check for response properties.
-        expect(stream.statusCode).to.equal(200);
-        expect(stream.headers).to.exist; //eslint-disable-line
-        expect(stream.complete).exist; //eslint-disable-line
-        expect(stream.httpVersion).to.eql('1.1');
-        expect(stream.rawHeaders).to.exist; //eslint-disable-line
-        expect(stream.rawTrailers).to.exist; //eslint-disable-line
-        expect(stream.socket).to.exist; //eslint-disable-line
-        expect(stream.statusMessage).to.eql('OK');
-        expect(stream.trailers).to.exist; //eslint-disable-line
-        expect(stream.url).to.exist; //eslint-disable-line
-        expect(stream.request).to.exist; //eslint-disable-line
-        expect(stream.request.gotOptions).to.exist; //eslint-disable-line
-        expect(stream.request.gotOptions).to.exist; //eslint-disable-line
+        expect(stream.statusCode).toBe(200);
+        expect(stream.headers).toBeDefined(); //eslint-disable-line
+        expect(stream.complete).toBeDefined(); //eslint-disable-line
+        expect(stream.httpVersion).toBe('1.1');
+        expect(stream.rawHeaders).toBeDefined(); //eslint-disable-line
+        expect(stream.rawTrailers).toBeDefined(); //eslint-disable-line
+        expect(stream.socket).toBeDefined(); //eslint-disable-line
+        expect(stream.statusMessage).toBe('OK');
+        expect(stream.trailers).toBeDefined(); //eslint-disable-line
+        expect(stream.url).toBeDefined(); //eslint-disable-line
+        expect(stream.request).toBeDefined(); //eslint-disable-line
+        expect(stream.request.gotOptions).toBeDefined(); //eslint-disable-line
+        expect(stream.request.gotOptions).toBeDefined(); //eslint-disable-line
 
         const content = await readStreamToString(stream);
-        expect(content).to.eql(CONTENT);
-        expect(stream.constructor.name).to.be.not.eql('Promise');
+        expect(content).toEqual(CONTENT);
+        expect(stream.constructor.name).not.toBe('Promise');
     });
 
-    it('it catches errors from abort functions and rejects the promise with the same error', async () => {
-        const error = new Error('Custom error');
-        const options = {
-            url: `http://${HOST}:${port}/gzip`,
-            stream: false,
-            abortFunction: () => {
-                throw error;
-            },
+    test(
+        'it catches errors from abort functions and rejects the promise with the same error',
+        async () => {
+            const error = new Error('Custom error');
+            const options = {
+                url: `http://${HOST}:${port}/gzip`,
+                stream: false,
+                abortFunction: () => {
+                    throw error;
+                },
 
-        };
-        let rejectedError;
-        try {
-            await httpRequest(options);
-        } catch (e) {
-            rejectedError = e;
-        }
-        expect(rejectedError.message).to.be.eql(error.message);
-    });
+            };
+            let rejectedError;
+            try {
+                await httpRequest(options);
+            } catch (e) {
+                rejectedError = e;
+            }
+            expect(rejectedError.message).toEqual(error.message);
+        },
+    );
 
-    it('it rethrows error if the json body cannot be parsed', async () => {
+    test('it rethrows error if the json body cannot be parsed', async () => {
         const options = {
             url: `http://${HOST}:${port}/invalidJson`,
             json: true,
@@ -474,10 +477,10 @@ describe('httpRequest', () => {
         } catch (e) {
             rejectedError = e;
         }
-        expect(rejectedError.message).to.be.eql('Could not parse the body');
+        expect(rejectedError.message).toBe('Could not parse the body');
     });
 
-    it('headers work as expected', async () => {
+    test('headers work as expected', async () => {
         const options = {
             url: `http://${HOST}:${port}/rawHeaders`,
             json: true,
@@ -490,38 +493,41 @@ describe('httpRequest', () => {
         };
         const { body } = await httpRequest(options);
 
-        expect(body.includes('Host')).to.be.eql(true);
-        expect(body.includes('User-Agent')).to.be.eql(true);
+        expect(body.includes('Host')).toBe(true);
+        expect(body.includes('User-Agent')).toBe(true);
 
         options.useCaseSensitiveHeaders = false;
         const { body: body2 } = await httpRequest(options);
 
-        expect(body2.includes('Host')).to.be.eql(false);
-        expect(body2.includes('User-Agent')).to.be.eql(false);
+        expect(body2.includes('Host')).toBe(false);
+        expect(body2.includes('User-Agent')).toBe(false);
     });
 
-    it('headers should have uniqueValues with useCaseSensitive headers', async () => {
-        const options = {
-            url: `http://${HOST}:${port}/rawHeaders`,
-            json: true,
-            useCaseSensitiveHeaders: true,
-            headers: {
-                'User-Agent': 'Test',
-                Host: HOST,
-                host: HOST,
-                'user-agent': 'TEST',
-            },
+    test(
+        'headers should have uniqueValues with useCaseSensitive headers',
+        async () => {
+            const options = {
+                url: `http://${HOST}:${port}/rawHeaders`,
+                json: true,
+                useCaseSensitiveHeaders: true,
+                headers: {
+                    'User-Agent': 'Test',
+                    Host: HOST,
+                    host: HOST,
+                    'user-agent': 'TEST',
+                },
 
-        };
-        const { body } = await httpRequest(options);
+            };
+            const { body } = await httpRequest(options);
 
-        expect(body.includes('Host')).to.be.eql(true);
-        expect(body.includes('User-Agent')).to.be.eql(true);
-        expect(body.includes('user-agent')).to.be.eql(false);
-        expect(body.includes('host')).to.be.eql(false);
-    });
+            expect(body.includes('Host')).toBe(true);
+            expect(body.includes('User-Agent')).toBe(true);
+            expect(body.includes('user-agent')).toBe(false);
+            expect(body.includes('host')).toBe(false);
+        },
+    );
 
-    it('gets rejected with error thrown from abort function ', async () => {
+    test('gets rejected with error thrown from abort function ', async () => {
         class MyError extends Error {
 
         }
@@ -540,11 +546,11 @@ describe('httpRequest', () => {
             error = e;
         }
 
-        expect(error.message).to.be.eql(testError.message);
-        expect(error instanceof MyError).to.be.eql(true);
+        expect(error.message).toEqual(testError.message);
+        expect(error instanceof MyError).toBe(true);
     });
 
-    it('can read a large response using stream API', async () => {
+    test('can read a large response using stream API', async () => {
         const options = {
             url: `http://${HOST}:${port}/bigFile`,
             stream: true,
@@ -552,16 +558,54 @@ describe('httpRequest', () => {
         const response = await httpRequest(options);
 
         const body = await readStreamToString(response);
-        expect(body).to.exist; // eslint-disable-line
+        expect(body).toBeDefined(); // eslint-disable-line
     });
 
-    it('can read a large response using promise API', async () => {
+    test('can read a large response using promise API', async () => {
         const options = {
             url: `http://${HOST}:${port}/bigFile`,
             stream: false,
         };
         const response = await httpRequest(options);
 
-        expect(response.body).to.exist; // eslint-disable-line
+        expect(response.body).toBeDefined(); // eslint-disable-line
+    });
+
+    describe('Proxy', () => {
+        let proxyServer;
+        const PROXY_PORT = 8000;
+
+        beforeAll(async () => {
+            proxyServer = new ProxyChain.Server({
+                // Port where the server will listen. By default 8000.
+                port: PROXY_PORT,
+                verbose: false,
+                prepareRequestFunction: ({ request }) => {
+                    return {
+                        upstreamProxyUrl: null,
+                        customResponseFunction: () => {
+                            return {
+                                headers: Object.assign(request.headers, { 'proxy-test': 'proxy' }) };
+                        },
+                    };
+                },
+            });
+
+            await new Promise(((resolve) => {
+                proxyServer.listen(() => {
+                    console.log(`Proxy server is listening on port ${server.port}`);
+                    resolve();
+                });
+            }));
+        });
+
+        afterAll(() => {
+            proxyServer.close();
+        });
+
+        test('uses proxy (proxyUrl)', async () => {
+            const response = await httpRequest({ url: `http://${HOST}:${port}/rawHeaders`, proxyUrl: `http://${HOST}:${PROXY_PORT}`, json: false });
+            expect(response.headers['proxy-test']).toEqual('proxy');
+        });
     });
 });
