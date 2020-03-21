@@ -25,17 +25,17 @@
     "devDependencies": {
         "@apify/eslint-config": "^0.0.3",
         "body-parser": "^1.19.0",
-        "eslint": "^5.16.0",
+        "eslint": "^6.8.0",
         "express": "^4.16.4",
-        "form-data": "^2.5.0",
-        "iltorb": "^2.4.3",
+        "form-data": "^3.0.0",
+        "iltorb": "^2.4.5",
         "jest": "^24.9.0",
         "multer": "^1.4.1",
-        "proxy-chain": "^0.3.3",
-        "sinon": "^7.3.2"
+        "proxy-chain": "^0.4.4",
+        "sinon": "^9.0.1"
     },
     "dependencies": {
-        "apify-shared": "^0.1.67",
+        "apify-shared": "^0.2.10",
         "got": "^9.6.0",
         "proxy-agent": "^3.1.1"
     }
