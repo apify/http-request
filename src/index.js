@@ -1,5 +1,6 @@
 const got = require('got');
-const ProxyAgent = require('proxy-agent');
+const HttpProxyAgent = require('http-proxy-agent');
+const HttpsProxyAgent = require('https-proxy-agent');
 
 const { PassThrough } = require('stream');
 const { readStreamToString } = require('apify-shared/streams_utilities');
@@ -122,12 +123,10 @@ module.exports = async (options) => {
     }
 
     if (proxyUrl) {
-        const agent = new ProxyAgent(proxyUrl);
+        const http = new HttpProxyAgent(proxyUrl);
+        const https = new HttpsProxyAgent(proxyUrl);
 
-        requestOptions.agent = {
-            https: agent,
-            http: agent,
-        };
+        requestOptions.agent = { http, https };
     }
 
     if (json) {
