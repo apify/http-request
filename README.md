@@ -97,7 +97,7 @@ You can also throw custom error inside the `options.abortFunction`.
 In this case, `httpRequest` aborts the request and throws your custom error.
 
 Default value is `null`.
-#### options.throwHttpErrors
+#### options.throwOnHttpErrors
 If set to true function throws and error on 4XX and 5XX response codes.
 
 Default value is `false`.
