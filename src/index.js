@@ -56,8 +56,7 @@ const createCaseSensitiveHook = require('./create_case_sensitive_hook');
  *  A function that determines whether the request should be aborted. It is called when the server
  *  responds with the HTTP headers, but before the actual data is downloaded.
  *  class and it should return `true` if request should be aborted, or `false` otherwise.
- *  It won't work if you have the `options.stream` set to true.
- * @param [options.throwHttpErrors=false]
+ * @param [options.throwOnHttpErrors=false]
  *  If set to true function throws and error on 4XX and 5XX response codes.
  * @param [options.decodeBody=true]
  *  If set to true decoded body is returned. Cannot be set to false if the [options.parsedBody] is true
@@ -98,7 +97,7 @@ module.exports = async (options) => {
         ...possibleGotOptions // Such as cookieJar.
     } = options;
 
-    const requestOptions = {
+    const gotOptions = {
         ...possibleGotOptions, // Add it first to be overridden in case of conflict.
         url,
         method,
@@ -108,9 +107,8 @@ module.exports = async (options) => {
         timeout: timeoutSecs * 1000,
         rejectUnauthorized: !ignoreSslErrors,
         body: payload,
-        json,
-        throwHttpErrors: false,
-        stream: true,
+        throwHttpErrors: throwOnHttpErrors,
+        isStream: true,
         decompress: false,
         retry: { retries: 0, maxRetryAfter: 0 },
         hooks: {
@@ -126,29 +124,26 @@ module.exports = async (options) => {
         const http = new HttpProxyAgent(proxyUrl);
         const https = new HttpsProxyAgent(proxyUrl);
 
-        requestOptions.agent = { http, https };
+        gotOptions.agent = { http, https };
     }
 
     if (json) {
-        requestOptions.headers = Object.assign({}, requestOptions.headers, { 'Content-Type': 'application/json' });
+        gotOptions.headers = Object.assign({}, gotOptions.headers, {
+            Accept: 'application/json, */*',
+            'Content-Type': 'application/json',
+        });
     }
 
     if (useCaseSensitiveHeaders) {
-        requestOptions.hooks.beforeRequest.push(createCaseSensitiveHook(requestOptions));
+        gotOptions.hooks.beforeRequest.push(createCaseSensitiveHook(gotOptions));
     }
 
     return new Promise((resolve, reject) => {
-        const requestStream = got(requestOptions)
+        const requestStream = got(gotOptions)
             .on('error', err => reject(err))
             .on('response', async (res) => {
                 let body;
                 let shouldAbort;
-
-                if (throwOnHttpErrors && res.statusCode >= 400) {
-                    return reject(
-                        new RequestError('Request failed', res),
-                    );
-                }
 
                 try {
                     shouldAbort = abortFunction && abortFunction(res);

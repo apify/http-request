@@ -258,11 +258,11 @@ describe('httpRequest', () => {
 
 
     test('passes response to abortFunction', async () => {
-        let constructorName;
+        let response;
         const data = {
             url: `http://${HOST}:${port}/gzip`,
-            abortFunction: (response) => {
-                constructorName = response.constructor.name;
+            abortFunction: (res) => {
+                response = res;
                 return false;
             },
 
@@ -270,27 +270,25 @@ describe('httpRequest', () => {
 
         await httpRequest(data);
 
-        expect(constructorName).toBe('Transform');
+        expect(response.constructor.name).toBe('IncomingMessage');
+        expect(response.body).toBe(CONTENT);
     });
 
-    test(
-        'it does not aborts request when aborts function returns false',
-        async () => {
-            let aborted = false;
-            const data = {
-                url: `http://${HOST}:${port}/gzip`,
-                abortFunction: (response) => {
-                    response.on('aborted', () => {
-                        aborted = true;
-                    });
-                    return false;
-                },
+    test('it does not aborts request when aborts function returns false', async () => {
+        let aborted = false;
+        const data = {
+            url: `http://${HOST}:${port}/gzip`,
+            abortFunction: (response) => {
+                response.on('aborted', () => {
+                    aborted = true;
+                });
+                return false;
+            },
 
-            };
-            await httpRequest(data);
-            expect(aborted).toBe(false);
-        },
-    );
+        };
+        await httpRequest(data);
+        expect(aborted).toBe(false);
+    });
 
     test('it aborts request', async () => {
         const data = {
@@ -346,59 +344,50 @@ describe('httpRequest', () => {
         expect(response.body).toEqual(CONTENT);
     });
 
-    test(
-        'it does not throw error for 400+ error codes when throwOnHttpError is false',
-        async () => {
-            const options = {
-                url: `http://${HOST}:${port}/500`,
-            };
-            let error;
-            try {
-                await httpRequest(options);
-            } catch (e) {
-                error = e;
-            }
+    test('it does not throw error for 400+ error codes when throwOnHttpError is false', async () => {
+        const options = {
+            url: `http://${HOST}:${port}/500`,
+        };
+        let error;
+        try {
+            await httpRequest(options);
+        } catch (e) {
+            error = e;
+        }
                 expect(error).toBeUndefined(); // eslint-disable-line
-        },
-    );
+    });
 
-    test(
-        'it does throw error for 400+ error codes when throwOnHttpErrors is true',
-        async () => {
-            const options = {
-                url: `http://${HOST}:${port}/500`,
-                throwOnHttpErrors: true,
+    test('it does throw error for 400+ error codes when throwOnHttpErrors is true', async () => {
+        const options = {
+            url: `http://${HOST}:${port}/500`,
+            throwOnHttpErrors: true,
 
-            };
-            let error;
+        };
+        let error;
 
-            try {
-                await httpRequest(options);
-            } catch (e) {
-                error = e;
-            }
+        try {
+            await httpRequest(options);
+        } catch (e) {
+            error = e;
+        }
 
             expect(error.message).toBeDefined(); // eslint-disable-line
-        },
-    );
+    });
 
-    test(
-        'it throws error when the body cannot be parsed and the code is 500 when throwOnHttpErrors is true',
-        async () => {
-            const options = {
-                url: `http://${HOST}:${port}/500/invalidBody`,
-                throwOnHttpErrors: true,
+    test('it throws error when the body cannot be parsed and the code is 500 when throwOnHttpErrors is true', async () => {
+        const options = {
+            url: `http://${HOST}:${port}/500/invalidBody`,
+            throwOnHttpErrors: true,
 
-            };
-            let error;
-            try {
-                await httpRequest(options);
-            } catch (e) {
-                error = e;
-            }
+        };
+        let error;
+        try {
+            await httpRequest(options);
+        } catch (e) {
+            error = e;
+        }
                 expect(error.message).toBeDefined(); // eslint-disable-line
-        },
-    );
+    });
 
     test('it throws error when the body cannot be parsed', async () => {
         const options = {
@@ -425,18 +414,17 @@ describe('httpRequest', () => {
 
         // check for response properties.
         expect(stream.statusCode).toBe(200);
-        expect(stream.headers).toBeDefined(); //eslint-disable-line
-        expect(stream.complete).toBeDefined(); //eslint-disable-line
+        expect(stream.headers).toBeDefined();
+        expect(stream.complete).toBeDefined();
         expect(stream.httpVersion).toBe('1.1');
-        expect(stream.rawHeaders).toBeDefined(); //eslint-disable-line
-        expect(stream.rawTrailers).toBeDefined(); //eslint-disable-line
-        expect(stream.socket).toBeDefined(); //eslint-disable-line
+        expect(stream.rawHeaders).toBeDefined();
+        expect(stream.rawTrailers).toBeDefined();
+        expect(stream.socket).toBeDefined();
         expect(stream.statusMessage).toBe('OK');
-        expect(stream.trailers).toBeDefined(); //eslint-disable-line
-        expect(stream.url).toBeDefined(); //eslint-disable-line
-        expect(stream.request).toBeDefined(); //eslint-disable-line
-        expect(stream.request.gotOptions).toBeDefined(); //eslint-disable-line
-        expect(stream.request.gotOptions).toBeDefined(); //eslint-disable-line
+        expect(stream.trailers).toBeDefined();
+        expect(stream.url).toBeDefined();
+        expect(stream.request).toBeDefined();
+        expect(stream.request.options).toBeDefined();
 
         const content = await readStreamToString(stream);
         expect(content).toEqual(CONTENT);
