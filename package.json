@@ -1,6 +1,6 @@
 {
     "name": "@apify/http-request",
-    "version": "2.0.0",
+    "version": "2.0.1",
     "description": "Wrapper of got package used across Apify",
     "main": "src/index.js",
     "repository": "https://github.com/apifytech/http-request",
@@ -25,18 +25,18 @@
     "devDependencies": {
         "@apify/eslint-config": "^0.0.3",
         "body-parser": "^1.19.0",
-        "eslint": "^6.8.0",
-        "express": "^4.16.4",
+        "eslint": "^7.1.0",
+        "express": "^4.17.1",
         "form-data": "^3.0.0",
         "iltorb": "^2.4.5",
-        "jest": "^24.9.0",
-        "multer": "^1.4.1",
-        "proxy-chain": "^0.4.4",
-        "sinon": "^9.0.1"
+        "jest": "^26.0.1",
+        "multer": "^1.4.2",
+        "proxy-chain": "^0.4.5",
+        "sinon": "^9.0.2"
     },
     "dependencies": {
-        "apify-shared": "^0.2.11",
-        "got": "^11.1.4",
+        "apify-shared": "^0.4.0",
+        "got": "^11.2.0",
         "http-proxy-agent": "^4.0.1",
         "https-proxy-agent": "^5.0.0"
     }

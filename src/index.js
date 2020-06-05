@@ -105,7 +105,6 @@ module.exports = async (options) => {
         followRedirect,
         maxRedirects,
         timeout: timeoutSecs * 1000,
-        rejectUnauthorized: !ignoreSslErrors,
         body: payload,
         throwHttpErrors: throwOnHttpErrors,
         isStream: true,
@@ -113,6 +112,9 @@ module.exports = async (options) => {
         retry: { retries: 0, maxRetryAfter: 0 },
         hooks: {
             beforeRequest: [],
+        },
+        https: {
+            rejectUnauthorized: !ignoreSslErrors,
         },
     };
 
