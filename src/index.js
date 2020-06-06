@@ -1,7 +1,7 @@
 const got = require('got');
 const HttpProxyAgent = require('http-proxy-agent');
 const HttpsProxyAgent = require('https-proxy-agent');
-
+const KeepAliveAgent = require('agentkeepalive');
 const { PassThrough } = require('stream');
 const { readStreamToString } = require('apify-shared/streams_utilities');
 const RequestError = require('./request_error');
@@ -110,6 +110,10 @@ module.exports = async (options) => {
         isStream: true,
         decompress: false,
         retry: { retries: 0, maxRetryAfter: 0 },
+        agent: {
+            http: new KeepAliveAgent(),
+            https: new KeepAliveAgent.HttpsAgent(),
+        },
         hooks: {
             beforeRequest: [],
         },
