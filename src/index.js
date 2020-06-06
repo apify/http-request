@@ -171,18 +171,23 @@ module.exports = async (options) => {
                     decompressedResponse = res;
                 }
 
-                // Error handler for decompress stream
-                decompressedResponse.on('error', error => reject(error));
-
                 if (stream) {
                     // Stream need to piped to PassThrough to stay readable
                     const passThrough = new PassThrough();
+                    // We need to handle errors on the next stream,
+                    // otherwise they would get swallowed / unhandled.
+                    decompressedResponse.on('error', (err) => {
+                        passThrough.emit('error', err);
+                    });
                     decompressedResponse.pipe(passThrough);
                     // Add http.IncomingMessage properties to decompress stream.
                     const streamWithResponseAttributes = addResponsePropertiesToStream(passThrough, res);
 
                     return resolve(streamWithResponseAttributes);
                 }
+
+                // Unlike when streaming, we can safely reject on error.
+                decompressedResponse.on('error', error => reject(error));
 
                 try {
                     body = await readStreamToString(decompressedResponse);
