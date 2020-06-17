@@ -74,7 +74,7 @@ Follow HTTP 3xx responses as redirects (default: true).
 The maximum number of redirects to follow. Default value is `20`
 
 #### options.timeoutSecs
-Integer containing the number of milliseconds to wait for a server to send
+Integer containing the number of seconds to wait for a server to send
 response headers (and start the response body) before aborting the request.
 Note that if the underlying TCP connection cannot be established, the OS-wide
 TCP connection timeout will overrule the timeout option (the default in Linux can be anywhere from 20-120 seconds).
