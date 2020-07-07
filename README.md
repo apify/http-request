@@ -2,8 +2,6 @@
 
 [![Build Status](https://travis-ci.com/apify/http-request.svg?branch=master)](https://travis-ci.com/apify/http-request)
 
-https://www.npmjs.com/package/@apify/http-request
-
 Sends a HTTP request and returns the response. This package is used it [Apify SDK](https://www.npmjs.com/package/apify) instead of the old [request](https://www.npmjs.com/package/request)
 
 NPM package. Implements a tunnel agent error fix, better proxy agents and supports `brotli` compression. Fixed `deflate` compression.
