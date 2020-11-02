@@ -105,7 +105,7 @@ module.exports = async (options) => {
         followRedirect,
         maxRedirects,
         timeout: timeoutSecs * 1000,
-        body: payload,
+        body: typeof payload === 'undefined' && /PATCH|POST|PUT/i.test(method) ? '' : payload,
         throwHttpErrors: throwOnHttpErrors,
         isStream: true,
         decompress: false,
