@@ -165,6 +165,25 @@ describe('httpRequest', () => {
         expect(body.fieldname).toBe('file');
     });
 
+    test('throws on parallel usage of http2 and useCaseSensitiveHeaders', async () => {
+        const options = {
+            url: `http://${HOST}:${port}/bigFile`,
+            stream: false,
+            useHttp2: true,
+            useCaseSensitiveHeaders: true,
+        };
+        let error;
+        try {
+            await httpRequest(options);
+        } catch (e) {
+            error = e;
+        }
+
+        expect(error).toBeDefined(); // eslint-disable-line
+
+        expect(error.message.includes('Headers must be lowercase when using http2.')).toBeTruthy();
+    });
+
     test('throws error when decode body is false and parse body is true', async () => {
         const data = {
             url: `http://${HOST}:${port}/gzip`,
@@ -595,37 +614,5 @@ describe('httpRequest', () => {
             const response = await httpRequest({ url: `http://${HOST}:${port}/rawHeaders`, proxyUrl: `http://${HOST}:${PROXY_PORT}`, json: false });
             expect(response.headers['proxy-test']).toEqual('proxy');
         });
-    });
-
-    it('throws on parallel usage of http2 and useCaseSensitiveHeaders', async () => {
-        const options = {
-            url: `http://${HOST}:${port}/bigFile`,
-            stream: false,
-            useHttp2: true,
-            useCaseSensitiveHeaders: true,
-        };
-        let error;
-        try {
-            await httpRequest(options);
-        } catch (e) {
-            error = e;
-        }
-
-        expect(error).to.exist; // eslint-disable-line
-
-        expect(error.message.includes('Headers must be lowercase when using http2.')).to.eq(true);
-    });
-
-    it('throws on parallel usage of http2 and useCaseSensitiveHeaders', async () => {
-        const options = {
-            url: 'https://http2.golang.org/reqinfo',
-            http2: true,
-            useHttp2: true,
-            json: false,
-            useCaseSensitiveHeaders: true,
-        };
-        const response = await httpRequest(options);
-
-        expect(response.body.includes('HTTP/2.0')).to.be.eq(true);
     });
 });

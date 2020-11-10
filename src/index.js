@@ -121,6 +121,7 @@ module.exports = async (options) => {
         https: {
             rejectUnauthorized: !ignoreSslErrors,
         },
+        http2: useHttp2,
     };
 
     if (json && !decodeBody) {
