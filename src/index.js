@@ -91,6 +91,7 @@ module.exports = async (options) => {
         json = false,
         stream = false,
         useBrotli = false,
+        useHttp2 = false,
         proxyUrl,
         payload,
         useCaseSensitiveHeaders,
@@ -105,6 +106,7 @@ module.exports = async (options) => {
         followRedirect,
         maxRedirects,
         timeout: timeoutSecs * 1000,
+        http2: useHttp2,
         rejectUnauthorized: !ignoreSslErrors,
         body: payload,
         json,
@@ -119,6 +121,10 @@ module.exports = async (options) => {
 
     if (json && !decodeBody) {
         throw new Error('If the "json" parameter is true, "decodeBody" must be also true.');
+    }
+
+    if (useCaseSensitiveHeaders && useHttp2) {
+        throw new Error('Headers must be lowercase when using http2. Turn off "useCaseSensitiveHeaders" or "useHttp2"');
     }
 
     if (proxyUrl) {
