@@ -1,6 +1,7 @@
 const got = require('got');
-const ProxyAgent = require('proxy-agent');
-
+const HttpProxyAgent = require('http-proxy-agent');
+const HttpsProxyAgent = require('https-proxy-agent');
+const KeepAliveAgent = require('agentkeepalive');
 const { PassThrough } = require('stream');
 const { readStreamToString } = require('apify-shared/streams_utilities');
 const RequestError = require('./request_error');
@@ -55,8 +56,7 @@ const createCaseSensitiveHook = require('./create_case_sensitive_hook');
  *  A function that determines whether the request should be aborted. It is called when the server
  *  responds with the HTTP headers, but before the actual data is downloaded.
  *  class and it should return `true` if request should be aborted, or `false` otherwise.
- *  It won't work if you have the `options.stream` set to true.
- * @param [options.throwHttpErrors=false]
+ * @param [options.throwOnHttpErrors=false]
  *  If set to true function throws and error on 4XX and 5XX response codes.
  * @param [options.decodeBody=true]
  *  If set to true decoded body is returned. Cannot be set to false if the [options.parsedBody] is true
@@ -98,7 +98,7 @@ module.exports = async (options) => {
         ...possibleGotOptions // Such as cookieJar.
     } = options;
 
-    const requestOptions = {
+    const gotOptions = {
         ...possibleGotOptions, // Add it first to be overridden in case of conflict.
         url,
         method,
@@ -106,16 +106,20 @@ module.exports = async (options) => {
         followRedirect,
         maxRedirects,
         timeout: timeoutSecs * 1000,
-        http2: useHttp2,
-        rejectUnauthorized: !ignoreSslErrors,
-        body: payload,
-        json,
-        throwHttpErrors: false,
-        stream: true,
+        body: typeof payload === 'undefined' && /PATCH|POST|PUT/i.test(method) ? '' : payload,
+        throwHttpErrors: throwOnHttpErrors,
+        isStream: true,
         decompress: false,
         retry: { retries: 0, maxRetryAfter: 0 },
+        agent: {
+            http: new KeepAliveAgent(),
+            https: new KeepAliveAgent.HttpsAgent(),
+        },
         hooks: {
             beforeRequest: [],
+        },
+        https: {
+            rejectUnauthorized: !ignoreSslErrors,
         },
     };
 
@@ -128,34 +132,29 @@ module.exports = async (options) => {
     }
 
     if (proxyUrl) {
-        const agent = new ProxyAgent(proxyUrl);
+        const http = new HttpProxyAgent(proxyUrl);
+        const https = new HttpsProxyAgent(proxyUrl);
 
-        requestOptions.agent = {
-            https: agent,
-            http: agent,
-        };
+        gotOptions.agent = { http, https };
     }
 
     if (json) {
-        requestOptions.headers = Object.assign({}, requestOptions.headers, { 'Content-Type': 'application/json' });
+        gotOptions.headers = Object.assign({}, gotOptions.headers, {
+            Accept: 'application/json, */*',
+            'Content-Type': 'application/json',
+        });
     }
 
     if (useCaseSensitiveHeaders) {
-        requestOptions.hooks.beforeRequest.push(createCaseSensitiveHook(requestOptions));
+        gotOptions.hooks.beforeRequest.push(createCaseSensitiveHook(gotOptions));
     }
 
     return new Promise((resolve, reject) => {
-        const requestStream = got(requestOptions)
+        const requestStream = got(gotOptions)
             .on('error', err => reject(err))
             .on('response', async (res) => {
                 let body;
                 let shouldAbort;
-
-                if (throwOnHttpErrors && res.statusCode >= 400) {
-                    return reject(
-                        new RequestError('Request failed', res),
-                    );
-                }
 
                 try {
                     shouldAbort = abortFunction && abortFunction(res);
@@ -181,18 +180,23 @@ module.exports = async (options) => {
                     decompressedResponse = res;
                 }
 
-                // Error handler for decompress stream
-                decompressedResponse.on('error', error => reject(error));
-
                 if (stream) {
                     // Stream need to piped to PassThrough to stay readable
                     const passThrough = new PassThrough();
+                    // We need to handle errors on the next stream,
+                    // otherwise they would get swallowed / unhandled.
+                    decompressedResponse.on('error', (err) => {
+                        passThrough.emit('error', err);
+                    });
                     decompressedResponse.pipe(passThrough);
                     // Add http.IncomingMessage properties to decompress stream.
                     const streamWithResponseAttributes = addResponsePropertiesToStream(passThrough, res);
 
                     return resolve(streamWithResponseAttributes);
                 }
+
+                // Unlike when streaming, we can safely reject on error.
+                decompressedResponse.on('error', error => reject(error));
 
                 try {
                     body = await readStreamToString(decompressedResponse);

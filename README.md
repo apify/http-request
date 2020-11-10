@@ -1,4 +1,6 @@
-# Http Request
+# HTTP request library for Node.js
+
+[![Build Status](https://travis-ci.com/apify/http-request.svg?branch=master)](https://travis-ci.com/apify/http-request)
 
 Sends a HTTP request and returns the response. This package is used it [Apify SDK](https://www.npmjs.com/package/apify) instead of the old [request](https://www.npmjs.com/package/request)
 
@@ -74,7 +76,7 @@ Follow HTTP 3xx responses as redirects (default: true).
 The maximum number of redirects to follow. Default value is `20`
 
 #### options.timeoutSecs
-Integer containing the number of milliseconds to wait for a server to send
+Integer containing the number of seconds to wait for a server to send
 response headers (and start the response body) before aborting the request.
 Note that if the underlying TCP connection cannot be established, the OS-wide
 TCP connection timeout will overrule the timeout option (the default in Linux can be anywhere from 20-120 seconds).
@@ -97,7 +99,7 @@ You can also throw custom error inside the `options.abortFunction`.
 In this case, `httpRequest` aborts the request and throws your custom error.
 
 Default value is `null`.
-#### options.throwHttpErrors
+#### options.throwOnHttpErrors
 If set to true function throws and error on 4XX and 5XX response codes.
 
 Default value is `false`.
