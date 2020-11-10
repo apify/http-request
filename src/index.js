@@ -68,6 +68,10 @@ const createCaseSensitiveHook = require('./create_case_sensitive_hook');
  * @param [options.useBrotli=false]
  *  If set to true you must have the peer dependency `iltorb`
  *  * @param [options.useCaseSensitiveHeaders=false]
+ * @param [options.useHttp2=false]
+ *  If set to true, Got will additionally accept HTTP2 requests.
+ *  It will choose either HTTP/1.1 or HTTP/2 depending on the ALPN protocol.
+ *  * @param [options.useCaseSensitiveHeaders=false]
  *  If set to true headers will not be lower cased. Experimental feature. Might not work on all versions of Node.Js.
  * @return {Promise<object>} - The response object will typically be a
  * [Node.js HTTP response stream](https://nodejs.org/api/http.html#http_class_http_incomingmessage),
