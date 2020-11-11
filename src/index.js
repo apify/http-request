@@ -73,6 +73,7 @@ const createCaseSensitiveHook = require('./create_case_sensitive_hook');
  *  It will choose either HTTP/1.1 or HTTP/2 depending on the ALPN protocol.
  *  * @param [options.useCaseSensitiveHeaders=false]
  *  If set to true headers will not be lower cased. Experimental feature. Might not work on all versions of Node.Js.
+ *  This is automatically disabled when useHttp2 is `true`
  * @return {Promise<object>} - The response object will typically be a
  * [Node.js HTTP response stream](https://nodejs.org/api/http.html#http_class_http_incomingmessage),
  * however, if returned from the cache it will be a [response-like object](https://github.com/lukechilds/responselike) which behaves in the same way.
@@ -132,10 +133,6 @@ module.exports = async (options) => {
         throw new Error('If the "json" parameter is true, "decodeBody" must be also true.');
     }
 
-    if (useCaseSensitiveHeaders && useHttp2) {
-        throw new Error('Headers must be lowercase when using http2. Turn off "useCaseSensitiveHeaders" or "useHttp2"');
-    }
-
     if (proxyUrl) {
         const http = new HttpProxyAgent(proxyUrl);
         const https = new HttpsProxyAgent(proxyUrl);
@@ -150,7 +147,7 @@ module.exports = async (options) => {
         });
     }
 
-    if (useCaseSensitiveHeaders) {
+    if (useCaseSensitiveHeaders && !useHttp2) {
         gotOptions.hooks.beforeRequest.push(createCaseSensitiveHook(gotOptions));
     }
 

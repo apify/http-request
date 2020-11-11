@@ -165,25 +165,6 @@ describe('httpRequest', () => {
         expect(body.fieldname).toBe('file');
     });
 
-    test('throws on parallel usage of http2 and useCaseSensitiveHeaders', async () => {
-        const options = {
-            url: `http://${HOST}:${port}/bigFile`,
-            stream: false,
-            useHttp2: true,
-            useCaseSensitiveHeaders: true,
-        };
-        let error;
-        try {
-            await httpRequest(options);
-        } catch (e) {
-            error = e;
-        }
-
-        expect(error).toBeDefined(); // eslint-disable-line
-
-        expect(error.message.includes('Headers must be lowercase when using http2.')).toBeTruthy();
-    });
-
     test('throws error when decode body is false and parse body is true', async () => {
         const data = {
             url: `http://${HOST}:${port}/gzip`,
