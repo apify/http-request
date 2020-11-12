@@ -68,7 +68,12 @@ const createCaseSensitiveHook = require('./create_case_sensitive_hook');
  * @param [options.useBrotli=false]
  *  If set to true you must have the peer dependency `iltorb`
  *  * @param [options.useCaseSensitiveHeaders=false]
+ * @param [options.useHttp2=false]
+ *  If set to true, Got will additionally accept HTTP2 requests.
+ *  It will choose either HTTP/1.1 or HTTP/2 depending on the ALPN protocol.
+ *  * @param [options.useCaseSensitiveHeaders=false]
  *  If set to true headers will not be lower cased. Experimental feature. Might not work on all versions of Node.Js.
+ *  This is automatically disabled when useHttp2 is `true`
  * @return {Promise<object>} - The response object will typically be a
  * [Node.js HTTP response stream](https://nodejs.org/api/http.html#http_class_http_incomingmessage),
  * however, if returned from the cache it will be a [response-like object](https://github.com/lukechilds/responselike) which behaves in the same way.
@@ -91,6 +96,7 @@ module.exports = async (options) => {
         json = false,
         stream = false,
         useBrotli = false,
+        useHttp2 = false,
         proxyUrl,
         payload,
         useCaseSensitiveHeaders,
@@ -120,6 +126,7 @@ module.exports = async (options) => {
         https: {
             rejectUnauthorized: !ignoreSslErrors,
         },
+        http2: useHttp2,
     };
 
     if (json && !decodeBody) {
@@ -140,7 +147,7 @@ module.exports = async (options) => {
         });
     }
 
-    if (useCaseSensitiveHeaders) {
+    if (useCaseSensitiveHeaders && !useHttp2) {
         gotOptions.hooks.beforeRequest.push(createCaseSensitiveHook(gotOptions));
     }
 
