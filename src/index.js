@@ -9,7 +9,6 @@ const decompress = require('./decompress');
 const addResponsePropertiesToStream = require('./add_response_properties_to_stream');
 const createCaseSensitiveHook = require('./create_case_sensitive_hook');
 
-
 /**
  * Sends a HTTP request and returns the response.
  * The function has similar functionality and options as the [request](https://www.npmjs.com/package/request) NPM package,
@@ -107,7 +106,7 @@ module.exports = async (options) => {
         ...possibleGotOptions, // Add it first to be overridden in case of conflict.
         url,
         method,
-        headers: Object.assign({}, headers, { 'Accept-Encoding': `gzip, deflate${useBrotli ? ', br' : ''}` }),
+        headers: { ...headers, 'Accept-Encoding': `gzip, deflate${useBrotli ? ', br' : ''}` },
         followRedirect,
         maxRedirects,
         timeout: timeoutSecs * 1000,
@@ -141,10 +140,9 @@ module.exports = async (options) => {
     }
 
     if (json) {
-        gotOptions.headers = Object.assign({}, gotOptions.headers, {
+        gotOptions.headers = { ...gotOptions.headers,
             Accept: 'application/json, */*',
-            'Content-Type': 'application/json',
-        });
+            'Content-Type': 'application/json' };
     }
 
     if (useCaseSensitiveHeaders && !useHttp2) {
@@ -153,7 +151,7 @@ module.exports = async (options) => {
 
     return new Promise((resolve, reject) => {
         const requestStream = got(gotOptions)
-            .on('error', err => reject(err))
+            .on('error', (err) => reject(err))
             .on('response', async (res) => {
                 let body;
                 let shouldAbort;
@@ -198,7 +196,7 @@ module.exports = async (options) => {
                 }
 
                 // Unlike when streaming, we can safely reject on error.
-                decompressedResponse.on('error', error => reject(error));
+                decompressedResponse.on('error', (error) => reject(error));
 
                 try {
                     body = await readStreamToString(decompressedResponse);

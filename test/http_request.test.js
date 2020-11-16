@@ -44,7 +44,7 @@ describe('httpRequest', () => {
 
         app.get('/timeOut', async (req, res) => {
             const timeout = parseInt(req.query.timeout, 10);
-            await new Promise(resolve => setTimeout(resolve, timeout));
+            await new Promise((resolve) => setTimeout(resolve, timeout));
             res.status(200);
             res.send(CONTENT);
         });
@@ -183,7 +183,6 @@ describe('httpRequest', () => {
         expect(error.message).toBe('If the "json" parameter is true, "decodeBody" must be also true.');
     });
 
-
     test('sends payload', async () => {
         const payload = JSON.stringify({
             TEST: 'TEST',
@@ -208,7 +207,6 @@ describe('httpRequest', () => {
         const { body } = await httpRequest({ url: `http://${HOST}:${port}/deflate-raw` });
         expect(body).toEqual(CONTENT);
     });
-
 
     test('has timeout parameter working', async () => {
         const waitTime = 1000;
@@ -255,7 +253,6 @@ describe('httpRequest', () => {
         }
         expect(error).toBeUndefined(); // eslint-disable-line
     });
-
 
     test('passes response to abortFunction', async () => {
         let response;
