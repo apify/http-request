@@ -1,3 +1,7 @@
+# This package is DEPRECATED
+It has been replaced by [`got-scraping`](https://github.com/apify/got-scraping).
+
+
 # HTTP request library for Node.js
 
 [![Build Status](https://travis-ci.com/apify/http-request.svg?branch=master)](https://travis-ci.com/apify/http-request)
